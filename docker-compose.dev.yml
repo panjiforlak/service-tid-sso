@@ -2,8 +2,8 @@ version: '3.8'
 
 services:
   api:
-    container_name: core-api-msi-dev
-    image: core-api-msi-dev
+    container_name: core-api-template-dev
+    image: core-api-template-dev
     build:
       context: .
       dockerfile: docker/Dockerfile.dev

@@ -2,8 +2,8 @@ version: '3.8'
 
 services:
   api:
-    container_name: core-api-msi-prod
-    image: core-api-msi-prod
+    container_name: core-api-template-prod
+    image: core-api-template-prod
     build:
       context: .
       dockerfile: docker/Dockerfile.prod
