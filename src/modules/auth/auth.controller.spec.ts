@@ -38,10 +38,7 @@ describe('AuthController', () => {
     const body = { username: 'admin', password: 'admin123' };
 
     const result = await controller.login(body);
-    expect(authService.validateUser).toHaveBeenCalledWith(
-      body.username,
-      body.password,
-    );
+    expect(authService.validateUser).toHaveBeenCalledWith(body.username, body.password);
     expect(authService.login).toHaveBeenCalledWith(mockUser);
     expect(result).toEqual(successResponse(mockJwt, 'Login succesfully!'));
   });
