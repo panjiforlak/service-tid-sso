@@ -14,9 +14,9 @@ export async function bootstrap() {
   app.setGlobalPrefix('api/sso');
 
   const config = new DocumentBuilder()
-    .setTitle('Your API')
+    .setTitle('SSO Phase')
     .setDescription('API documentation')
-    .setVersion('1.0')
+    .setVersion('1')
     .addBearerAuth(
       {
         type: 'http',

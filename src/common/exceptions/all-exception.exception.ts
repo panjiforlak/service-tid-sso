@@ -36,11 +36,13 @@ export class RateLimiter implements ExceptionFilter {
   catch(exception: ThrottlerException, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse();
+    const trxId = generateTrxId();
 
     response.status(429).json({
       statusCode: 429,
       message: 'You are suspected of fraud!.',
-      error: 'Too Many Requests',
+      data: { info: 'Too Many Requests' },
+      trxId,
     });
   }
 }

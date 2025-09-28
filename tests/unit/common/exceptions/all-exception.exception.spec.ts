@@ -45,9 +45,9 @@ describe('AllExceptionsFilter', () => {
 
     it('should handle HttpException', () => {
       const exception = new HttpException('Test error', HttpStatus.BAD_REQUEST);
-      
+
       filter.catch(exception, mockArgumentsHost);
-      
+
       expect(mockResponse.status).toHaveBeenCalledWith(HttpStatus.BAD_REQUEST);
       expect(mockResponse.json).toHaveBeenCalledWith({
         statusCode: HttpStatus.BAD_REQUEST,
@@ -59,9 +59,9 @@ describe('AllExceptionsFilter', () => {
 
     it('should handle generic Error', () => {
       const exception = new Error('Generic error');
-      
+
       filter.catch(exception, mockArgumentsHost);
-      
+
       expect(mockResponse.status).toHaveBeenCalledWith(HttpStatus.INTERNAL_SERVER_ERROR);
       expect(mockResponse.json).toHaveBeenCalledWith({
         statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
@@ -73,9 +73,9 @@ describe('AllExceptionsFilter', () => {
 
     it('should handle unknown exception', () => {
       const exception = 'Unknown error';
-      
+
       filter.catch(exception, mockArgumentsHost);
-      
+
       expect(mockResponse.status).toHaveBeenCalledWith(HttpStatus.INTERNAL_SERVER_ERROR);
       expect(mockResponse.json).toHaveBeenCalledWith({
         statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
@@ -87,21 +87,24 @@ describe('AllExceptionsFilter', () => {
 
     it('should include trxId in response', () => {
       const exception = new HttpException('Test error', HttpStatus.BAD_REQUEST);
-      
+
       filter.catch(exception, mockArgumentsHost);
-      
+
       const responseCall = mockResponse.json.mock.calls[0][0];
-      
+
       expect(responseCall.trxId).toBeDefined();
       expect(typeof responseCall.trxId).toBe('string');
       expect(responseCall.trxId).toMatch(/^TID/);
     });
 
     it('should handle HttpException with object response', () => {
-      const exception = new HttpException({ message: 'Object error', statusCode: 422 }, HttpStatus.UNPROCESSABLE_ENTITY);
-      
+      const exception = new HttpException(
+        { message: 'Object error', statusCode: 422 },
+        HttpStatus.UNPROCESSABLE_ENTITY,
+      );
+
       filter.catch(exception, mockArgumentsHost);
-      
+
       expect(mockResponse.status).toHaveBeenCalledWith(HttpStatus.UNPROCESSABLE_ENTITY);
       expect(mockResponse.json).toHaveBeenCalledWith({
         statusCode: 422,
@@ -113,9 +116,9 @@ describe('AllExceptionsFilter', () => {
 
     it('should handle HttpException with existing trxId', () => {
       const exception = new HttpException({ message: 'Error with trxId', trxId: 'TID123456' }, HttpStatus.BAD_REQUEST);
-      
+
       filter.catch(exception, mockArgumentsHost);
-      
+
       expect(mockResponse.status).toHaveBeenCalledWith(HttpStatus.BAD_REQUEST);
       expect(mockResponse.json).toHaveBeenCalledWith({
         statusCode: HttpStatus.BAD_REQUEST,
@@ -126,10 +129,13 @@ describe('AllExceptionsFilter', () => {
     });
 
     it('should handle HttpException with existing statusCode', () => {
-      const exception = new HttpException({ message: 'Error with statusCode', statusCode: 422 }, HttpStatus.BAD_REQUEST);
-      
+      const exception = new HttpException(
+        { message: 'Error with statusCode', statusCode: 422 },
+        HttpStatus.BAD_REQUEST,
+      );
+
       filter.catch(exception, mockArgumentsHost);
-      
+
       expect(mockResponse.status).toHaveBeenCalledWith(HttpStatus.BAD_REQUEST);
       expect(mockResponse.json).toHaveBeenCalledWith({
         statusCode: 422,
@@ -140,10 +146,13 @@ describe('AllExceptionsFilter', () => {
     });
 
     it('should handle HttpException with existing data', () => {
-      const exception = new HttpException({ message: 'Error with data', data: { field: 'value' } }, HttpStatus.BAD_REQUEST);
-      
+      const exception = new HttpException(
+        { message: 'Error with data', data: { field: 'value' } },
+        HttpStatus.BAD_REQUEST,
+      );
+
       filter.catch(exception, mockArgumentsHost);
-      
+
       expect(mockResponse.status).toHaveBeenCalledWith(HttpStatus.BAD_REQUEST);
       expect(mockResponse.json).toHaveBeenCalledWith({
         statusCode: HttpStatus.BAD_REQUEST,
@@ -155,9 +164,9 @@ describe('AllExceptionsFilter', () => {
 
     it('should handle HttpException with missing message (fallback to Unknown error)', () => {
       const exception = new HttpException({ statusCode: 422 }, HttpStatus.UNPROCESSABLE_ENTITY);
-      
+
       filter.catch(exception, mockArgumentsHost);
-      
+
       expect(mockResponse.status).toHaveBeenCalledWith(HttpStatus.UNPROCESSABLE_ENTITY);
       expect(mockResponse.json).toHaveBeenCalledWith({
         statusCode: 422,
@@ -169,9 +178,9 @@ describe('AllExceptionsFilter', () => {
 
     it('should handle HttpException with empty message (fallback to Unknown error)', () => {
       const exception = new HttpException({ message: '', statusCode: 422 }, HttpStatus.UNPROCESSABLE_ENTITY);
-      
+
       filter.catch(exception, mockArgumentsHost);
-      
+
       expect(mockResponse.status).toHaveBeenCalledWith(HttpStatus.UNPROCESSABLE_ENTITY);
       expect(mockResponse.json).toHaveBeenCalledWith({
         statusCode: 422,
@@ -183,9 +192,9 @@ describe('AllExceptionsFilter', () => {
 
     it('should handle HttpException with null message (fallback to Unknown error)', () => {
       const exception = new HttpException({ message: null, statusCode: 422 }, HttpStatus.UNPROCESSABLE_ENTITY);
-      
+
       filter.catch(exception, mockArgumentsHost);
-      
+
       expect(mockResponse.status).toHaveBeenCalledWith(HttpStatus.UNPROCESSABLE_ENTITY);
       expect(mockResponse.json).toHaveBeenCalledWith({
         statusCode: 422,
@@ -197,9 +206,9 @@ describe('AllExceptionsFilter', () => {
 
     it('should handle HttpException with undefined message (fallback to Unknown error)', () => {
       const exception = new HttpException({ message: undefined, statusCode: 422 }, HttpStatus.UNPROCESSABLE_ENTITY);
-      
+
       filter.catch(exception, mockArgumentsHost);
-      
+
       expect(mockResponse.status).toHaveBeenCalledWith(HttpStatus.UNPROCESSABLE_ENTITY);
       expect(mockResponse.json).toHaveBeenCalledWith({
         statusCode: 422,
@@ -245,14 +254,15 @@ describe('RateLimiter', () => {
 
     it('should handle ThrottlerException', () => {
       const exception = new ThrottlerException();
-      
+
       filter.catch(exception, mockArgumentsHost);
-      
+
       expect(mockResponse.status).toHaveBeenCalledWith(429);
       expect(mockResponse.json).toHaveBeenCalledWith({
         statusCode: 429,
         message: 'You are suspected of fraud!.',
-        error: 'Too Many Requests',
+        data: { info: 'Too Many Requests' },
+        trxId: expect.any(String),
       });
     });
   });

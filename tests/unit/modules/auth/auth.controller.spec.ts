@@ -7,15 +7,15 @@ describe('AuthController', () => {
   let controller: AuthController;
   let authService: AuthService;
 
-  const mockUser = { 
-    id: 1, 
+  const mockUser = {
+    id: 1,
     username: 'admin',
     role: 'user',
-    permissions: ['read']
+    permissions: ['read'],
   };
-  const mockJwt = { 
+  const mockJwt = {
     access_token: 'mocked-jwt-token',
-    refresh_token: 'mocked-refresh-token'
+    refresh_token: 'mocked-refresh-token',
   };
 
   const mockAuthService = {
@@ -31,13 +31,13 @@ describe('AuthController', () => {
       id: 1,
       username: 'admin',
       full_name: 'Admin User',
-      email: 'admin@example.com'
+      email: 'admin@example.com',
     }),
     updateProfile: jest.fn().mockResolvedValue({
       id: 1,
       username: 'admin',
       full_name: 'Updated Name',
-      email: 'admin@example.com'
+      email: 'admin@example.com',
     }),
     getActiveSessionCount: jest.fn().mockResolvedValue(1),
     cleanupExpiredSessions: jest.fn().mockResolvedValue({ message: 'Sessions cleaned up' }),
@@ -74,20 +74,19 @@ describe('AuthController', () => {
       data: mockJwt,
       message: 'Login successfully!',
       statusCode: 200,
-      trxId: expect.any(String)
+      trxId: expect.any(String),
     });
   });
 
   it('should handle error in login and track failed login', async () => {
     const body = { username: 'admin', password: 'wrongpassword' };
     const error = new Error('Invalid credentials');
-    
+
     jest.spyOn(authService, 'validateUser').mockRejectedValue(error);
 
     await expect(controller.login(body)).rejects.toThrow('Invalid credentials');
     expect(authService.trackFailedLogin).toHaveBeenCalledWith(body.username, undefined);
   });
-
 
   it('should refresh token and return success response', async () => {
     const body = { refresh_token: 'refresh-token' };
@@ -98,11 +97,9 @@ describe('AuthController', () => {
       data: { access_token: 'new-token' },
       message: 'Token refreshed successfully!',
       statusCode: 200,
-      trxId: expect.any(String)
+      trxId: expect.any(String),
     });
   });
-
-
 
   it('should register user and return success response', async () => {
     const body = {
@@ -110,7 +107,7 @@ describe('AuthController', () => {
       email: 'john@example.com',
       username: 'johndoe',
       password: 'password123',
-      role: 'user'
+      role: 'user',
     };
 
     const result = await controller.register(body);
@@ -119,7 +116,7 @@ describe('AuthController', () => {
       data: mockUser,
       message: 'User registered successfully!',
       statusCode: 200,
-      trxId: expect.any(String)
+      trxId: expect.any(String),
     });
   });
 
@@ -133,7 +130,7 @@ describe('AuthController', () => {
       data: { message: 'Logged out successfully' },
       message: 'Logout successfully!',
       statusCode: 200,
-      trxId: expect.any(String)
+      trxId: expect.any(String),
     });
   });
 
@@ -146,14 +143,14 @@ describe('AuthController', () => {
       data: { message: 'Password reset email sent', reset_token: 'reset-token' },
       message: 'Password reset instructions sent to email!',
       statusCode: 200,
-      trxId: expect.any(String)
+      trxId: expect.any(String),
     });
   });
 
   it('should reset password and return success response', async () => {
     const body = {
       reset_token: 'reset-token',
-      new_password: 'newpassword123'
+      new_password: 'newpassword123',
     };
 
     const result = await controller.resetPassword(body);
@@ -162,18 +159,16 @@ describe('AuthController', () => {
       data: { message: 'Password reset successfully' },
       message: 'Password reset successfully!',
       statusCode: 200,
-      trxId: expect.any(String)
+      trxId: expect.any(String),
     });
   });
 
   it('should change password and return success response', async () => {
     const body = {
       current_password: 'oldpassword',
-      new_password: 'newpassword123'
+      new_password: 'newpassword123',
     };
     const req = { user: { sub: 1 } };
-
-    // Mock the controller method directly to avoid JWT guard issues
     const changePasswordSpy = jest.spyOn(controller, 'changePassword');
     changePasswordSpy.mockImplementation(async (req, body) => {
       const userId = req.user.sub;
@@ -187,7 +182,7 @@ describe('AuthController', () => {
       data: { message: 'Password changed successfully' },
       message: 'Password changed successfully!',
       statusCode: 200,
-      trxId: expect.any(String)
+      trxId: expect.any(String),
     });
 
     changePasswordSpy.mockRestore();
@@ -195,14 +190,12 @@ describe('AuthController', () => {
 
   it('should handle changePassword with proper req.user.sub extraction', async () => {
     const body = { current_password: 'oldpass', new_password: 'newpass' };
-    const req = { user: { sub: 123 } }; // Different user ID
-
-    // Mock the controller method directly to test req.user.sub extraction
+    const req = { user: { sub: 123 } };
     const changePasswordSpy = jest.spyOn(controller, 'changePassword');
     changePasswordSpy.mockImplementation(async (req, body) => {
-      const userId = req.user.sub; // This should cover line 73
-      const result = await authService.changePassword(userId, body); // This should cover line 74
-      return successResponse(result, 'Password changed successfully!'); // This should cover line 75
+      const userId = req.user.sub;
+      const result = await authService.changePassword(userId, body);
+      return successResponse(result, 'Password changed successfully!');
     });
 
     const result = await controller.changePassword(req as any, body);
@@ -211,7 +204,7 @@ describe('AuthController', () => {
       data: { message: 'Password changed successfully' },
       message: 'Password changed successfully!',
       statusCode: 200,
-      trxId: expect.any(String)
+      trxId: expect.any(String),
     });
 
     changePasswordSpy.mockRestore();
@@ -220,15 +213,13 @@ describe('AuthController', () => {
   it('should handle changePassword with direct method call', async () => {
     const body = { current_password: 'oldpass', new_password: 'newpass' };
     const req = { user: { sub: 456 } };
-
-    // Call the method directly to ensure coverage
     const result = await controller.changePassword(req as any, body);
     expect(authService.changePassword).toHaveBeenCalledWith(456, body);
     expect(result).toMatchObject({
       data: { message: 'Password changed successfully' },
       message: 'Password changed successfully!',
       statusCode: 200,
-      trxId: expect.any(String)
+      trxId: expect.any(String),
     });
   });
 
@@ -242,19 +233,17 @@ describe('AuthController', () => {
         id: 1,
         username: 'admin',
         full_name: 'Admin User',
-        email: 'admin@example.com'
+        email: 'admin@example.com',
       },
       message: 'Profile retrieved successfully!',
       statusCode: 200,
-      trxId: expect.any(String)
+      trxId: expect.any(String),
     });
   });
 
   it('should update profile and return success response', async () => {
     const body = { full_name: 'Updated Name' };
     const req = { user: { sub: 1 } };
-
-    // Mock the controller method directly to avoid JWT guard issues
     const updateProfileSpy = jest.spyOn(controller, 'updateProfile');
     updateProfileSpy.mockImplementation(async (req, body) => {
       const userId = req.user.sub;
@@ -269,11 +258,11 @@ describe('AuthController', () => {
         id: 1,
         username: 'admin',
         full_name: 'Updated Name',
-        email: 'admin@example.com'
+        email: 'admin@example.com',
       },
       message: 'Profile updated successfully!',
       statusCode: 200,
-      trxId: expect.any(String)
+      trxId: expect.any(String),
     });
 
     updateProfileSpy.mockRestore();
@@ -281,14 +270,12 @@ describe('AuthController', () => {
 
   it('should handle updateProfile with proper req.user.sub extraction', async () => {
     const body = { full_name: 'Updated Name' };
-    const req = { user: { sub: 456 } }; // Different user ID
-
-    // Mock the controller method directly to test req.user.sub extraction
+    const req = { user: { sub: 456 } };
     const updateProfileSpy = jest.spyOn(controller, 'updateProfile');
     updateProfileSpy.mockImplementation(async (req, body) => {
-      const userId = req.user.sub; // This should cover line 89
-      const user = await authService.updateProfile(userId, body); // This should cover line 90
-      return successResponse(user, 'Profile updated successfully!'); // This should cover line 91
+      const userId = req.user.sub;
+      const user = await authService.updateProfile(userId, body);
+      return successResponse(user, 'Profile updated successfully!');
     });
 
     const result = await controller.updateProfile(req as any, body);
@@ -298,11 +285,11 @@ describe('AuthController', () => {
         id: 1,
         username: 'admin',
         full_name: 'Updated Name',
-        email: 'admin@example.com'
+        email: 'admin@example.com',
       },
       message: 'Profile updated successfully!',
       statusCode: 200,
-      trxId: expect.any(String)
+      trxId: expect.any(String),
     });
 
     updateProfileSpy.mockRestore();
@@ -312,7 +299,6 @@ describe('AuthController', () => {
     const body = { full_name: 'Updated Name' };
     const req = { user: { sub: 789 } };
 
-    // Call the method directly to ensure coverage
     const result = await controller.updateProfile(req as any, body);
     expect(authService.updateProfile).toHaveBeenCalledWith(789, body);
     expect(result).toMatchObject({
@@ -320,11 +306,11 @@ describe('AuthController', () => {
         id: 1,
         username: 'admin',
         full_name: 'Updated Name',
-        email: 'admin@example.com'
+        email: 'admin@example.com',
       },
       message: 'Profile updated successfully!',
       statusCode: 200,
-      trxId: expect.any(String)
+      trxId: expect.any(String),
     });
   });
 
@@ -334,14 +320,14 @@ describe('AuthController', () => {
     const result = await controller.getSessionInfo(req as any);
     expect(authService.getActiveSessionCount).toHaveBeenCalledWith(1);
     expect(result).toMatchObject({
-      data: { 
-        active_sessions: 1, 
-        user_id: 1, 
-        message: 'Session info retrieved successfully' 
+      data: {
+        active_sessions: 1,
+        user_id: 1,
+        message: 'Session info retrieved successfully',
       },
       message: 'Session info retrieved successfully!',
       statusCode: 200,
-      trxId: expect.any(String)
+      trxId: expect.any(String),
     });
   });
 
@@ -352,7 +338,7 @@ describe('AuthController', () => {
       data: { message: 'Expired sessions cleaned up' },
       message: 'Sessions cleaned up successfully!',
       statusCode: 200,
-      trxId: expect.any(String)
+      trxId: expect.any(String),
     });
   });
 });

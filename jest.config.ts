@@ -19,6 +19,7 @@ const config: Config = {
     '!src/modules/**/entities/**/*',
     '!src/modules/**/dto/**/*',
     '!src/**/*.module.ts',
+    '!src/**/*.swagger.ts',
     '!src/modules/**/*.strategy.ts',
   ],
   coverageDirectory: './coverage',

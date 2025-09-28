@@ -41,15 +41,11 @@ describe('AppController (e2e)', () => {
 
   describe('Error Handling', () => {
     it('should handle 404 for non-existent endpoints', () => {
-      return request(app.getHttpServer())
-        .get('/api/sso/non-existent')
-        .expect(404);
+      return request(app.getHttpServer()).get('/api/sso/non-existent').expect(404);
     });
 
     it('should handle 404 for root path', () => {
-      return request(app.getHttpServer())
-        .get('/')
-        .expect(404);
+      return request(app.getHttpServer()).get('/').expect(404);
     });
   });
 
@@ -108,27 +104,19 @@ describe('AppController (e2e)', () => {
 
   describe('HTTP Methods', () => {
     it('should handle GET requests', () => {
-      return request(app.getHttpServer())
-        .get('/api/sso/test')
-        .expect(404);
+      return request(app.getHttpServer()).get('/api/sso/test').expect(404);
     });
 
     it('should handle POST requests', () => {
-      return request(app.getHttpServer())
-        .post('/api/sso/test')
-        .expect(404);
+      return request(app.getHttpServer()).post('/api/sso/test').expect(404);
     });
 
     it('should handle PUT requests', () => {
-      return request(app.getHttpServer())
-        .put('/api/sso/test')
-        .expect(404);
+      return request(app.getHttpServer()).put('/api/sso/test').expect(404);
     });
 
     it('should handle DELETE requests', () => {
-      return request(app.getHttpServer())
-        .delete('/api/sso/test')
-        .expect(404);
+      return request(app.getHttpServer()).delete('/api/sso/test').expect(404);
     });
   });
 

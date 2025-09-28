@@ -126,7 +126,7 @@ describe('UsersService', () => {
   it('should update profile', async () => {
     const updateData = { full_name: 'Updated Name' };
     const updatedUser = { id: 1, username: 'admin', ...updateData };
-    
+
     mockRepo.update.mockResolvedValue({ affected: 1 });
     mockRepo.findOne.mockResolvedValueOnce(updatedUser);
 
@@ -137,7 +137,7 @@ describe('UsersService', () => {
 
   it('should throw error if user not found during profile update', async () => {
     const updateData = { full_name: 'Updated Name' };
-    
+
     mockRepo.update.mockResolvedValue({ affected: 1 });
     mockRepo.findOne.mockResolvedValueOnce(null);
 
@@ -195,7 +195,6 @@ describe('UsersService', () => {
     await expect(service.updateProfile(1, { full_name: 'Test' })).rejects.toThrow('Database error');
   });
 
-  // Additional error handling tests for better branch coverage
   it('should handle error in findByUsername with null error message', async () => {
     mockRepo.findOne.mockRejectedValue(new Error());
 

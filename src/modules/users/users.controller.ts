@@ -17,9 +17,10 @@ import { JwtAuthGuard } from '@/common/guard/jwt-auth.guard';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { S3Service } from '@/integrations/s3/s3.service';
 import { UploadDto } from '@/integrations/s3/dto/upload.dto';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiUsersTags, ApiGetProfile, ApiUpdateProfile, ApiUploadAvatar, ApiDeleteAvatar } from './users.swagger';
+import { ApiBearerAuth } from '@nestjs/swagger';
 
-@ApiTags('Users')
+@ApiUsersTags()
 @ApiBearerAuth('jwt')
 @Controller('users')
 export class UsersController {

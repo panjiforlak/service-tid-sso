@@ -76,22 +76,22 @@ describe('AuthService', () => {
 
   describe('validateUser', () => {
     it('should return user without password if valid', async () => {
-      const mockUser = { 
-        id: 1, 
-        username: 'admin', 
+      const mockUser = {
+        id: 1,
+        username: 'admin',
         password: 'hashed',
         role: 'user',
-        permissions: ['read']
+        permissions: ['read'],
       };
       mockUsersService.findByUsername.mockResolvedValue(mockUser);
       (bcrypt.compare as jest.Mock).mockResolvedValue(true);
 
       const result = await service.validateUser('admin', 'admin123');
-      expect(result).toEqual({ 
-        id: 1, 
+      expect(result).toEqual({
+        id: 1,
         username: 'admin',
         role: 'user',
-        permissions: ['read']
+        permissions: ['read'],
       });
     });
 
@@ -101,27 +101,27 @@ describe('AuthService', () => {
     });
 
     it('should throw error if password invalid', async () => {
-      const mockUser = { 
-        id: 1, 
-        username: 'admin', 
+      const mockUser = {
+        id: 1,
+        username: 'admin',
         password: 'hashed',
         role: 'user',
-        permissions: ['read']
+        permissions: ['read'],
       };
       mockUsersService.findByUsername.mockResolvedValue(mockUser);
       (bcrypt.compare as jest.Mock).mockResolvedValue(false);
-      
+
       await expect(service.validateUser('admin', 'wrong')).rejects.toThrow();
     });
   });
 
   describe('login', () => {
     it('should return access_token and refresh_token when no existing session', async () => {
-      const mockUser = { 
-        id: 1, 
+      const mockUser = {
+        id: 1,
         username: 'admin',
         role: 'user',
-        permissions: ['read']
+        permissions: ['read'],
       };
       mockJwtService.signAsync.mockResolvedValue('signed-token');
       mockUserSessionRepository.findOne.mockResolvedValue(null);
@@ -129,18 +129,18 @@ describe('AuthService', () => {
       mockUserSessionRepository.save.mockResolvedValue({});
 
       const result = await service.login(mockUser);
-      expect(result).toEqual({ 
+      expect(result).toEqual({
         access_token: 'signed-token',
-        refresh_token: 'signed-token'
+        refresh_token: 'signed-token',
       });
     });
 
     it('should return access_token and refresh_token when existing session', async () => {
-      const mockUser = { 
-        id: 1, 
+      const mockUser = {
+        id: 1,
         username: 'admin',
         role: 'user',
-        permissions: ['read']
+        permissions: ['read'],
       };
       const existingSession = { id: 1, user_id: 1 };
       mockJwtService.signAsync.mockResolvedValue('signed-token');
@@ -148,9 +148,9 @@ describe('AuthService', () => {
       mockUserSessionRepository.update.mockResolvedValue({});
 
       const result = await service.login(mockUser);
-      expect(result).toEqual({ 
+      expect(result).toEqual({
         access_token: 'signed-token',
-        refresh_token: 'signed-token'
+        refresh_token: 'signed-token',
       });
     });
   });
@@ -167,7 +167,7 @@ describe('AuthService', () => {
 
     it('should throw error for invalid refresh token', async () => {
       mockJwtService.verifyAsync.mockRejectedValue(new Error('Invalid token'));
-      
+
       await expect(service.refreshToken('invalid-token')).rejects.toThrow();
     });
   });
@@ -179,9 +179,9 @@ describe('AuthService', () => {
         email: 'john@example.com',
         username: 'johndoe',
         password: 'password123',
-        role: 'user'
+        role: 'user',
       };
-      
+
       mockUsersService.findByUsername.mockResolvedValue(null);
       mockUsersService.findByEmail.mockResolvedValue(null);
       (bcrypt.hash as jest.Mock).mockResolvedValue('hashed-password');
@@ -193,7 +193,7 @@ describe('AuthService', () => {
         password: 'hashed-password',
         role: 'user',
         is_active: true,
-        email_verified: false
+        email_verified: false,
       });
 
       const result = await service.register(registerDto);
@@ -204,7 +204,7 @@ describe('AuthService', () => {
         username: 'johndoe',
         role: 'user',
         is_active: true,
-        email_verified: false
+        email_verified: false,
       });
     });
 
@@ -213,11 +213,11 @@ describe('AuthService', () => {
         full_name: 'John Doe',
         email: 'john@example.com',
         username: 'johndoe',
-        password: 'password123'
+        password: 'password123',
       };
-      
+
       mockUsersService.findByUsername.mockResolvedValue({ id: 1, username: 'johndoe' });
-      
+
       await expect(service.register(registerDto)).rejects.toThrow();
     });
 
@@ -226,12 +226,12 @@ describe('AuthService', () => {
         full_name: 'John Doe',
         email: 'john@example.com',
         username: 'johndoe',
-        password: 'password123'
+        password: 'password123',
       };
-      
+
       mockUsersService.findByUsername.mockResolvedValue(null);
       mockUsersService.findByEmail.mockResolvedValue({ id: 1, email: 'john@example.com' });
-      
+
       await expect(service.register(registerDto)).rejects.toThrow();
     });
   });
@@ -249,7 +249,7 @@ describe('AuthService', () => {
     it('should send password reset token', async () => {
       const forgotPasswordDto = { email: 'john@example.com' };
       const mockUser = { id: 1, email: 'john@example.com' };
-      
+
       mockUsersService.findByEmail.mockResolvedValue(mockUser);
       mockPasswordResetRepository.create.mockReturnValue({});
       mockPasswordResetRepository.save.mockResolvedValue({});
@@ -262,7 +262,7 @@ describe('AuthService', () => {
     it('should throw error if email not found', async () => {
       const forgotPasswordDto = { email: 'notfound@example.com' };
       mockUsersService.findByEmail.mockResolvedValue(null);
-      
+
       await expect(service.forgotPassword(forgotPasswordDto)).rejects.toThrow();
     });
   });
@@ -271,7 +271,7 @@ describe('AuthService', () => {
     it('should reset password successfully', async () => {
       const resetPasswordDto = {
         reset_token: 'valid-token',
-        new_password: 'newpassword123'
+        new_password: 'newpassword123',
       };
       const mockPasswordReset = {
         id: 1,
@@ -279,9 +279,9 @@ describe('AuthService', () => {
         reset_token: 'valid-token',
         expires_at: new Date(Date.now() + 3600000),
         is_used: false,
-        user: { id: 1 }
+        user: { id: 1 },
       };
-      
+
       mockPasswordResetRepository.findOne.mockResolvedValue(mockPasswordReset);
       (bcrypt.hash as jest.Mock).mockResolvedValue('hashed-password');
       mockUsersService.updatePassword.mockResolvedValue(undefined);
@@ -294,11 +294,11 @@ describe('AuthService', () => {
     it('should throw error for invalid reset token', async () => {
       const resetPasswordDto = {
         reset_token: 'invalid-token',
-        new_password: 'newpassword123'
+        new_password: 'newpassword123',
       };
-      
+
       mockPasswordResetRepository.findOne.mockResolvedValue(null);
-      
+
       await expect(service.resetPassword(resetPasswordDto)).rejects.toThrow();
     });
   });
@@ -307,10 +307,10 @@ describe('AuthService', () => {
     it('should change password successfully', async () => {
       const changePasswordDto = {
         current_password: 'oldpassword',
-        new_password: 'newpassword123'
+        new_password: 'newpassword123',
       };
       const mockUser = { id: 1, password: 'hashed-old-password' };
-      
+
       mockUsersService.findById.mockResolvedValue(mockUser);
       (bcrypt.compare as jest.Mock).mockResolvedValue(true);
       (bcrypt.hash as jest.Mock).mockResolvedValue('hashed-new-password');
@@ -323,13 +323,13 @@ describe('AuthService', () => {
     it('should throw error if current password is incorrect', async () => {
       const changePasswordDto = {
         current_password: 'wrongpassword',
-        new_password: 'newpassword123'
+        new_password: 'newpassword123',
       };
       const mockUser = { id: 1, password: 'hashed-old-password' };
-      
+
       mockUsersService.findById.mockResolvedValue(mockUser);
       (bcrypt.compare as jest.Mock).mockResolvedValue(false);
-      
+
       await expect(service.changePassword(1, changePasswordDto)).rejects.toThrow();
     });
   });
@@ -341,9 +341,9 @@ describe('AuthService', () => {
         username: 'admin',
         full_name: 'Admin User',
         email: 'admin@example.com',
-        password: 'hashed-password'
+        password: 'hashed-password',
       };
-      
+
       mockUsersService.findById.mockResolvedValue(mockUser);
 
       const result = await service.getProfile(1);
@@ -351,13 +351,13 @@ describe('AuthService', () => {
         id: 1,
         username: 'admin',
         full_name: 'Admin User',
-        email: 'admin@example.com'
+        email: 'admin@example.com',
       });
     });
 
     it('should throw error if user not found', async () => {
       mockUsersService.findById.mockResolvedValue(null);
-      
+
       await expect(service.getProfile(999)).rejects.toThrow();
     });
   });
@@ -370,9 +370,9 @@ describe('AuthService', () => {
         username: 'admin',
         full_name: 'Updated Name',
         email: 'admin@example.com',
-        password: 'hashed-password'
+        password: 'hashed-password',
       };
-      
+
       mockUsersService.updateProfile.mockResolvedValue(mockUser);
 
       const result = await service.updateProfile(1, updateProfileDto);
@@ -380,7 +380,7 @@ describe('AuthService', () => {
         id: 1,
         username: 'admin',
         full_name: 'Updated Name',
-        email: 'admin@example.com'
+        email: 'admin@example.com',
       });
     });
   });
@@ -399,9 +399,9 @@ describe('AuthService', () => {
         id: 1,
         username: 'admin',
         attempt_count: 3,
-        is_locked: false
+        is_locked: false,
       };
-      
+
       mockFailedLoginRepository.findOne.mockResolvedValue(existingFailedLogin);
       mockFailedLoginRepository.update.mockResolvedValue({});
 
@@ -414,9 +414,9 @@ describe('AuthService', () => {
         id: 1,
         username: 'admin',
         attempt_count: 4,
-        is_locked: false
+        is_locked: false,
       };
-      
+
       mockFailedLoginRepository.findOne.mockResolvedValue(existingFailedLogin);
       mockFailedLoginRepository.update.mockResolvedValue({});
 
@@ -460,11 +460,11 @@ describe('AuthService', () => {
 
   describe('login error handling', () => {
     it('should handle error in login method', async () => {
-      const userPayload = { 
-        id: 1, 
-        username: 'testuser', 
-        role: 'user', 
-        permissions: [] 
+      const userPayload = {
+        id: 1,
+        username: 'testuser',
+        role: 'user',
+        permissions: [],
       };
       // Mock the jwtService.signAsync to throw an error
       mockJwtService.signAsync.mockRejectedValue(new Error('JWT error'));
@@ -498,7 +498,7 @@ describe('AuthService', () => {
         id: 1,
         user: { id: 1 },
         expires_at: new Date(Date.now() - 1000), // Expired
-        is_used: false
+        is_used: false,
       };
 
       mockPasswordResetRepository.findOne.mockResolvedValue(expiredReset);
@@ -510,9 +510,9 @@ describe('AuthService', () => {
       const resetDto = { reset_token: 'valid-token', new_password: 'newpassword123' };
       const validReset = {
         id: 1,
-        user: { id: 999 }, // Non-existent user
+        user: { id: 999 }, // No-exist user
         expires_at: new Date(Date.now() + 1000),
-        is_used: false
+        is_used: false,
       };
 
       mockPasswordResetRepository.findOne.mockResolvedValue(validReset);
@@ -543,8 +543,6 @@ describe('AuthService', () => {
   describe('trackFailedLogin error handling', () => {
     it('should handle error in trackFailedLogin method', async () => {
       mockFailedLoginRepository.findOne.mockRejectedValue(new Error('Database error'));
-
-      // Should not throw error, just silently handle it
       await expect(service.trackFailedLogin('testuser', '192.168.1.1')).resolves.toBeUndefined();
     });
   });
@@ -552,18 +550,17 @@ describe('AuthService', () => {
   describe('clearFailedLogins error handling', () => {
     it('should handle error in clearFailedLogins method', async () => {
       mockFailedLoginRepository.delete.mockRejectedValue(new Error('Database error'));
-
-      // Should not throw error, just silently handle it
       await expect(service.clearFailedLogins('testuser')).resolves.toBeUndefined();
     });
   });
 
-  // Additional error handling tests for better branch coverage
   describe('validateUser error handling with null error message', () => {
     it('should handle error in validateUser with null error message', async () => {
       mockUsersService.findByUsername.mockRejectedValue(new Error());
 
-      await expect(service.validateUser('testuser', 'password')).rejects.toThrow('Something went wrong while validating user');
+      await expect(service.validateUser('testuser', 'password')).rejects.toThrow(
+        'Something went wrong while validating user',
+      );
     });
   });
 
@@ -571,16 +568,19 @@ describe('AuthService', () => {
     it('should handle error in login with null error message', async () => {
       mockJwtService.signAsync.mockRejectedValue(new Error());
 
-      await expect(service.login({ id: 1, username: 'test', role: 'user', permissions: [] })).rejects.toThrow('Something went wrong while generating token');
+      await expect(service.login({ id: 1, username: 'test', role: 'user', permissions: [] })).rejects.toThrow(
+        'Something went wrong while generating token',
+      );
     });
   });
-
 
   describe('register error handling with null error message', () => {
     it('should handle error in register with null error message', async () => {
       mockUsersService.findByEmail.mockRejectedValue(new Error());
 
-      await expect(service.register({ username: 'test', email: 'test@test.com', password: 'password', full_name: 'Test User' })).rejects.toThrow('Something went wrong while registering user');
+      await expect(
+        service.register({ username: 'test', email: 'test@test.com', password: 'password', full_name: 'Test User' }),
+      ).rejects.toThrow('Something went wrong while registering user');
     });
   });
 
@@ -588,7 +588,9 @@ describe('AuthService', () => {
     it('should handle error in forgotPassword with null error message', async () => {
       mockUsersService.findByEmail.mockRejectedValue(new Error());
 
-      await expect(service.forgotPassword({ email: 'test@test.com' })).rejects.toThrow('Something went wrong while processing forgot password');
+      await expect(service.forgotPassword({ email: 'test@test.com' })).rejects.toThrow(
+        'Something went wrong while processing forgot password',
+      );
     });
   });
 
@@ -596,7 +598,9 @@ describe('AuthService', () => {
     it('should handle error in resetPassword with null error message', async () => {
       mockPasswordResetRepository.findOne.mockRejectedValue(new Error());
 
-      await expect(service.resetPassword({ reset_token: 'token', new_password: 'password' })).rejects.toThrow('Something went wrong while resetting password');
+      await expect(service.resetPassword({ reset_token: 'token', new_password: 'password' })).rejects.toThrow(
+        'Something went wrong while resetting password',
+      );
     });
   });
 
@@ -607,7 +611,9 @@ describe('AuthService', () => {
       (bcrypt.compare as jest.Mock).mockResolvedValue(true);
       mockUsersService.updatePassword.mockRejectedValue(new Error());
 
-      await expect(service.changePassword(1, { current_password: 'old', new_password: 'new' })).rejects.toThrow('Something went wrong while changing password');
+      await expect(service.changePassword(1, { current_password: 'old', new_password: 'new' })).rejects.toThrow(
+        'Something went wrong while changing password',
+      );
     });
   });
 
@@ -623,7 +629,9 @@ describe('AuthService', () => {
     it('should handle error in updateProfile with null error message', async () => {
       mockUsersService.updateProfile.mockRejectedValue(new Error());
 
-      await expect(service.updateProfile(1, { full_name: 'New Name' })).rejects.toThrow('Something went wrong while updating profile');
+      await expect(service.updateProfile(1, { full_name: 'New Name' })).rejects.toThrow(
+        'Something went wrong while updating profile',
+      );
     });
   });
 });

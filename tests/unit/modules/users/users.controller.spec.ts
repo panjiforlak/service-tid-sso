@@ -85,7 +85,6 @@ describe('UsersController', () => {
   });
 });
 
-// UploadController tests
 describe('UploadController', () => {
   let uploadController: any;
   let s3Service: any;
@@ -117,16 +116,13 @@ describe('UploadController', () => {
       ],
     }).compile();
 
-    // Get the UploadController from the UsersController file
     const controller = module.get<UsersController>(UsersController);
-    
-    // Create UploadController instance manually
     uploadController = {
       s3Service: mockS3Service,
       upload: async (file: Express.Multer.File, body: any) => {
         const url = await uploadController.s3Service.uploadFile(file, body.folder);
         return { url };
-      }
+      },
     };
   });
 
@@ -159,11 +155,10 @@ describe('UploadController', () => {
   });
 
   it('should test UploadController constructor', () => {
-    // Test the constructor by creating a new instance
     const UploadControllerClass = class {
       constructor(private readonly s3Service: any) {}
     };
-    
+
     const instance = new UploadControllerClass(mockS3Service);
     expect(instance).toBeDefined();
   });
@@ -175,8 +170,6 @@ describe('UploadController', () => {
     } as Express.Multer.File;
 
     const body = { folder: 'uploads' };
-
-    // Test the upload method logic directly
     const url = await mockS3Service.uploadFile(mockFile, body.folder);
     const result = { url };
 
@@ -185,10 +178,9 @@ describe('UploadController', () => {
   });
 
   it('should test UploadController with actual class', () => {
-    // Create a test class that mimics the UploadController
     class TestUploadController {
       constructor(private readonly s3Service: S3Service) {}
-      
+
       async upload(file: Express.Multer.File, body: any) {
         const url = await this.s3Service.uploadFile(file, body.folder);
         return { url };
@@ -197,20 +189,15 @@ describe('UploadController', () => {
 
     const testController = new TestUploadController(mockS3Service as any);
     expect(testController).toBeDefined();
-    // Test that the constructor was called with the correct service
     expect(mockS3Service).toBeDefined();
   });
 
   it('should test UploadController upload method with actual implementation', async () => {
-    // Test the exact implementation from the UploadController
     const mockFile = {
       originalname: 'test.jpg',
       buffer: Buffer.from('test'),
     } as Express.Multer.File;
-
     const body = { folder: 'uploads' };
-
-    // This mimics the exact code from line 68-69 in users.controller.ts
     const url = await mockS3Service.uploadFile(mockFile, body.folder);
     const result = { url };
 
@@ -230,7 +217,7 @@ describe('UploadController', () => {
     }).compile();
 
     const uploadController = module.get<UploadController>(UploadController);
-    
+
     const mockFile = {
       originalname: 'test.jpg',
       buffer: Buffer.from('test'),
@@ -244,4 +231,3 @@ describe('UploadController', () => {
     expect(result).toEqual({ url: 'https://example.com/file.jpg' });
   });
 });
-

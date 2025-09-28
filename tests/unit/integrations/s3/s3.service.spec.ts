@@ -22,10 +22,7 @@ describe('S3Service', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        S3Service,
-        { provide: ConfigService, useValue: mockConfigService },
-      ],
+      providers: [S3Service, { provide: ConfigService, useValue: mockConfigService }],
     }).compile();
 
     service = module.get<S3Service>(S3Service);
@@ -97,5 +94,4 @@ describe('S3Service', () => {
       expect(result2).toBeUndefined();
     });
   });
-
 });

@@ -9,13 +9,25 @@ import { ChangePasswordDto } from './dto/change-password.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { successResponse } from '@/common/helpers/response.helper';
 import { JwtAuthGuard } from '@/common/guard/jwt-auth.guard';
+import {
+  ApiAuthTags,
+  ApiRegister,
+  ApiLogin,
+  ApiForgotPassword,
+  ApiResetPassword,
+  ApiChangePassword,
+  ApiUpdateProfile,
+  ApiLogout,
+} from './auth.swagger';
 
+@ApiAuthTags()
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('register')
   @HttpCode(201)
+  @ApiRegister()
   async register(@Body() body: RegisterDto) {
     const user = await this.authService.register(body);
     return successResponse(user, 'User registered successfully!');
@@ -26,16 +38,15 @@ export class AuthController {
   @Throttle({
     default: {
       limit: parseInt(process.env.LOGIN_RATE_LIMIT ?? '2', 10),
-      ttl: parseInt(process.env.LOGIN_RATE_TTL ?? '60000', 10), // dalam ms
+      ttl: parseInt(process.env.LOGIN_RATE_TTL ?? '60000', 10),
     },
-  }) // 2 request per menit
+  })
+  @ApiLogin()
   async login(@Body() body: LoginDto, @Headers('x-forwarded-for') ipAddress?: string) {
     try {
       const user = await this.authService.validateUser(body.username, body.password);
       const token = await this.authService.login(user);
-
       await this.authService.clearFailedLogins(body.username);
-
       return successResponse(token, 'Login successfully!');
     } catch (error) {
       await this.authService.trackFailedLogin(body.username, ipAddress);
@@ -46,6 +57,7 @@ export class AuthController {
   @Post('logout')
   @HttpCode(200)
   @UseGuards(JwtAuthGuard)
+  @ApiLogout()
   async logout(@Request() req) {
     const token = req.headers.authorization?.replace('Bearer ', '');
     const result = await this.authService.logout(token);
@@ -54,6 +66,7 @@ export class AuthController {
 
   @Post('forgot-password')
   @HttpCode(200)
+  @ApiForgotPassword()
   async forgotPassword(@Body() body: ForgotPasswordDto) {
     const result = await this.authService.forgotPassword(body);
     return successResponse(result, 'Password reset instructions sent to email!');
@@ -61,6 +74,7 @@ export class AuthController {
 
   @Post('reset-password')
   @HttpCode(200)
+  @ApiResetPassword()
   async resetPassword(@Body() body: ResetPasswordDto) {
     const result = await this.authService.resetPassword(body);
     return successResponse(result, 'Password reset successfully!');
@@ -69,6 +83,7 @@ export class AuthController {
   @Post('change-password')
   @HttpCode(200)
   @UseGuards(JwtAuthGuard)
+  @ApiChangePassword()
   async changePassword(@Request() req, @Body() body: ChangePasswordDto) {
     const userId = req.user.sub;
     const result = await this.authService.changePassword(userId, body);
@@ -77,6 +92,7 @@ export class AuthController {
 
   @Get('profile')
   @UseGuards(JwtAuthGuard)
+  @ApiUpdateProfile()
   async getProfile(@Request() req) {
     const userId = req.user.sub;
     const user = await this.authService.getProfile(userId);
@@ -85,6 +101,7 @@ export class AuthController {
 
   @Put('profile')
   @UseGuards(JwtAuthGuard)
+  @ApiUpdateProfile()
   async updateProfile(@Request() req, @Body() body: UpdateProfileDto) {
     const userId = req.user.sub;
     const user = await this.authService.updateProfile(userId, body);
