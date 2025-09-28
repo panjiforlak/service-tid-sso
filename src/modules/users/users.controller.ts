@@ -25,7 +25,7 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
-  @UseGuards(JwtAuthGuard) // sample menggunakan token
+  @UseGuards(JwtAuthGuard)
   @Get()
   async findAll(): Promise<any> {
     const users = await this.usersService.findAll();

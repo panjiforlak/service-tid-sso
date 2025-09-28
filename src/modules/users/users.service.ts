@@ -40,7 +40,7 @@ export class UsersService {
 
   async create(data: Partial<User>): Promise<User> {
     try {
-      const trxId = generateTrxId('USR'); // trx untuk tracing
+      const trxId = generateTrxId('USR');
       const user = this.userRepository.create(data);
       const savedUser = await this.userRepository.save(user);
 

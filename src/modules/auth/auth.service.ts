@@ -59,27 +59,24 @@ export class AuthService {
       const access_token = await this.jwtService.signAsync(payload, { expiresIn: process.env.JWT_EXPIRES_IN });
       const refresh_token = await this.jwtService.signAsync(payload, { expiresIn: process.env.JWT_REFRESH_EXPIRES_IN });
 
-      // Check if user already has an active session
       const existingSession = await this.userSessionRepository.findOne({
-        where: { 
+        where: {
           user_id: user.id,
-          is_active: true 
-        }
+          is_active: true,
+        },
       });
 
       if (existingSession) {
-        // Update existing session instead of creating new one
         await this.userSessionRepository.update(
           { id: existingSession.id },
           {
             session_token: access_token,
             refresh_token: refresh_token,
             expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
-            is_active: true
-          }
+            is_active: true,
+          },
         );
       } else {
-        // Create new session if none exists
         const session = this.userSessionRepository.create({
           user_id: user.id,
           session_token: access_token,
@@ -127,10 +124,7 @@ export class AuthService {
         throwError('Email already exists', 400);
       }
 
-      // Hash password
       const hashedPassword = await bcrypt.hash(password, 10);
-
-      // Create user
       const user = await this.usersService.create({
         full_name,
         email,
@@ -150,40 +144,34 @@ export class AuthService {
 
   async logout(sessionToken: string) {
     try {
-      // Invalidate current session
-      await this.userSessionRepository.update(
-        { session_token: sessionToken }, 
-        { is_active: false }
-      );
+      await this.userSessionRepository.update({ session_token: sessionToken }, { is_active: false });
       return { message: 'Logged out successfully' };
     } catch (error) {
       throwError('Something went wrong while logging out', 500);
     }
   }
 
-  // Cleanup expired sessions (bisa dipanggil secara berkala)
   async cleanupExpiredSessions() {
     try {
       await this.userSessionRepository.update(
-        { 
+        {
           expires_at: LessThan(new Date()),
-          is_active: true 
+          is_active: true,
         },
-        { is_active: false }
+        { is_active: false },
       );
     } catch (error) {
       // Failed to cleanup expired sessions
     }
   }
 
-  // Get active session count for a user (untuk monitoring)
   async getActiveSessionCount(userId: number): Promise<number> {
     try {
       return await this.userSessionRepository.count({
-        where: { 
+        where: {
           user_id: userId,
-          is_active: true 
-        }
+          is_active: true,
+        },
       });
     } catch (error) {
       return 0;
@@ -199,11 +187,9 @@ export class AuthService {
         throwError('Email not found', 404);
       }
 
-      // Generate reset token
       const resetToken = uuidv4();
       const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
 
-      // Save reset token
       const passwordReset = this.passwordResetRepository.create({
         user_id: user.id,
         reset_token: resetToken,
@@ -211,7 +197,6 @@ export class AuthService {
       });
       await this.passwordResetRepository.save(passwordReset);
 
-      // Untuk saat ini, hanya balikin token boy
       return {
         message: 'Password reset token sent to email',
         reset_token: resetToken, // Nanti klo udah live gausa dipake.
