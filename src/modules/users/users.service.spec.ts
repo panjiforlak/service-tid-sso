@@ -22,9 +22,7 @@ describe('UsersService', () => {
       return Promise.resolve(null);
     }),
     create: jest.fn().mockImplementation((data: any) => data),
-    save: jest
-      .fn()
-      .mockImplementation((data) => Promise.resolve({ id: 2, ...data })),
+    save: jest.fn().mockImplementation((data) => Promise.resolve({ id: 2, ...data })),
     delete: jest.fn().mockResolvedValue({ affected: 1 }),
   };
 

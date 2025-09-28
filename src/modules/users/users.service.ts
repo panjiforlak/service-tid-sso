@@ -62,4 +62,33 @@ export class UsersService {
       throwError(error?.message || 'Failed to delete user');
     }
   }
+
+  async findByEmail(email: string): Promise<User | null> {
+    try {
+      return await this.userRepository.findOne({ where: { email } });
+    } catch (error) {
+      throwError(error?.message || 'Failed to fetch user by email');
+    }
+  }
+
+  async updatePassword(id: number, hashedPassword: string): Promise<void> {
+    try {
+      await this.userRepository.update(id, { password: hashedPassword });
+    } catch (error) {
+      throwError(error?.message || 'Failed to update password');
+    }
+  }
+
+  async updateProfile(id: number, updateData: Partial<User>): Promise<User> {
+    try {
+      await this.userRepository.update(id, updateData);
+      const user = await this.findById(id);
+      if (!user) {
+        throwError('User not found after update');
+      }
+      return user;
+    } catch (error) {
+      throwError(error?.message || 'Failed to update profile');
+    }
+  }
 }

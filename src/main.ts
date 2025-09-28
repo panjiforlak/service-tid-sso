@@ -1,6 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { AllExceptionsFilter } from './common/exceptions/all-exception.exception';
+import { AllExceptionsFilter, RateLimiter } from './common/exceptions/all-exception.exception';
 import { LoggerInterceptor } from './common/interceptors/logger.interceptor';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { BadRequestException, ValidationPipe } from '@nestjs/common';
@@ -57,7 +57,7 @@ async function bootstrap() {
       },
     }),
   );
-  app.useGlobalFilters(new AllExceptionsFilter());
+  app.useGlobalFilters(new AllExceptionsFilter(), new RateLimiter());
   app.useGlobalInterceptors(new LoggerInterceptor());
 
   await app.listen(process.env.PORT ?? 3000);

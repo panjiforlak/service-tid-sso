@@ -44,10 +44,7 @@ describe('AuthService', () => {
       mockUsersService.findByUsername.mockResolvedValue(mockUser);
       (bcrypt.compare as jest.Mock).mockResolvedValue(true);
 
-      const result = (await service.validateUser(
-        'admin',
-        'admin123',
-      )) as string;
+      const result = (await service.validateUser('admin', 'admin123')) as string;
       expect(result).toEqual({ id: 1, username: 'admin' });
     });
 

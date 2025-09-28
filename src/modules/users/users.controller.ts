@@ -12,10 +12,7 @@ import {
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { User } from './entities/user.entity';
-import {
-  successResponse,
-  throwError,
-} from '../../common/helpers/response.helper';
+import { successResponse, throwError } from '../../common/helpers/response.helper';
 import { JwtAuthGuard } from '../../common/guard/jwt-auth.guard';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { S3Service } from '@/integrations/s3/s3.service';
@@ -67,10 +64,7 @@ export class UploadController {
 
   @Post()
   @UseInterceptors(FileInterceptor('file'))
-  async upload(
-    @UploadedFile() file: Express.Multer.File,
-    @Body() body: UploadDto,
-  ) {
+  async upload(@UploadedFile() file: Express.Multer.File, @Body() body: UploadDto) {
     const url = await this.s3Service.uploadFile(file, body.folder);
     return { url };
   }

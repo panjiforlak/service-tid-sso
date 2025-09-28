@@ -1,14 +1,23 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule } from '@nestjs/config';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { UsersModule } from './modules/users/users.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { APP_GUARD } from '@nestjs/core';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
     }),
+    ThrottlerModule.forRoot([
+      //v6 throttle
+      {
+        ttl: 60000, // 1 menit (dalam ms, bukan detik)
+        limit: 100, // 100 request per menit global
+      },
+    ]),
     TypeOrmModule.forRootAsync({
       useFactory: () => ({
         type: 'postgres',
@@ -23,6 +32,12 @@ import { AuthModule } from './modules/auth/auth.module';
     }),
     UsersModule,
     AuthModule,
+  ],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
   ],
 })
 export class AppModule {}

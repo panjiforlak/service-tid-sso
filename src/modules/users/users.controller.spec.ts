@@ -1,10 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
-import {
-  successResponse,
-  throwError,
-} from '../../common/helpers/response.helper';
+import { successResponse, throwError } from '../../common/helpers/response.helper';
 
 jest.mock('../../common/helpers/response.helper', () => ({
   successResponse: (data: any) => ({ success: true, data }),
@@ -21,9 +18,7 @@ describe('UsersController', () => {
 
   const mockUsersService = {
     findAll: jest.fn().mockResolvedValue([mockUser]),
-    findById: jest.fn((id: number) =>
-      id === 1 ? Promise.resolve(mockUser) : Promise.resolve(null),
-    ),
+    findById: jest.fn((id: number) => (id === 1 ? Promise.resolve(mockUser) : Promise.resolve(null))),
     create: jest.fn((body) => Promise.resolve({ id: 2, ...body })),
     delete: jest.fn().mockResolvedValue({ affected: 1 }),
   };
@@ -60,9 +55,7 @@ describe('UsersController', () => {
   });
 
   it('should throw error if user not found', async () => {
-    await expect(controller.findOne(999)).rejects.toThrow(
-      '404 - User not found',
-    );
+    await expect(controller.findOne(999)).rejects.toThrow('404 - User not found');
   });
 
   it('should create a user', async () => {

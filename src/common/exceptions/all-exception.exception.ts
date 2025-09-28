@@ -1,6 +1,7 @@
 import { ExceptionFilter, Catch, ArgumentsHost, HttpException, HttpStatus } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { generateTrxId } from '../helpers/common.helper';
+import { ThrottlerException } from '@nestjs/throttler';
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
@@ -26,6 +27,20 @@ export class AllExceptionsFilter implements ExceptionFilter {
       message: errorResponse.message || 'Unknown error',
       data: errorResponse.data || { error: true },
       trxId,
+    });
+  }
+}
+
+@Catch(ThrottlerException)
+export class RateLimiter implements ExceptionFilter {
+  catch(exception: ThrottlerException, host: ArgumentsHost) {
+    const ctx = host.switchToHttp();
+    const response = ctx.getResponse();
+
+    response.status(429).json({
+      statusCode: 429,
+      message: 'You are suspected of fraud!.',
+      error: 'Too Many Requests',
     });
   }
 }
