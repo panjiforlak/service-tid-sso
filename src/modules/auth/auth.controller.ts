@@ -7,8 +7,8 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
-import { successResponse } from '../../common/helpers/response.helper';
-import { JwtAuthGuard } from '../../common/guard/jwt-auth.guard';
+import { successResponse } from '@/common/helpers/response.helper';
+import { JwtAuthGuard } from '@/common/guard/jwt-auth.guard';
 
 @Controller('auth')
 export class AuthController {

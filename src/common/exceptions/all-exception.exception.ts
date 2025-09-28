@@ -1,6 +1,6 @@
 import { ExceptionFilter, Catch, ArgumentsHost, HttpException, HttpStatus } from '@nestjs/common';
 import { Request, Response } from 'express';
-import { generateTrxId } from '../helpers/common.helper';
+import { generateTrxId } from '@/common/helpers/common.helper';
 import { ThrottlerException } from '@nestjs/throttler';
 
 @Catch()

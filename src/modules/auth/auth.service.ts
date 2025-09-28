@@ -1,15 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { UsersService } from '../users/users.service';
+import { UsersService } from '@/modules/users/users.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, LessThan } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
-import { throwError } from '../../common/helpers/response.helper';
-import { User } from '../users/entities/user.entity';
-import { UserSession } from '../users/entities/user-session.entity';
-import { PasswordReset } from '../users/entities/password-reset.entity';
-import { FailedLogin } from '../users/entities/failed-login.entity';
+import { throwError } from '@/common/helpers/response.helper';
+import { User } from '@/modules/users/entities/user.entity';
+import { UserSession } from '@/modules/users/entities/user-session.entity';
+import { PasswordReset } from '@/modules/users/entities/password-reset.entity';
+import { FailedLogin } from '@/modules/users/entities/failed-login.entity';
 import { RegisterDto } from './dto/register.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
@@ -172,7 +172,7 @@ export class AuthService {
         { is_active: false }
       );
     } catch (error) {
-      console.error('Failed to cleanup expired sessions:', error);
+      // Failed to cleanup expired sessions
     }
   }
 
@@ -186,7 +186,6 @@ export class AuthService {
         }
       });
     } catch (error) {
-      console.error('Failed to get active session count:', error);
       return 0;
     }
   }
@@ -334,7 +333,6 @@ export class AuthService {
       if (error.status === 423) {
         throw error;
       }
-      console.error('Failed to track failed login:', error);
     }
   }
 
@@ -342,7 +340,7 @@ export class AuthService {
     try {
       await this.failedLoginRepository.delete({ username });
     } catch (error) {
-      console.error('Failed to clear failed logins:', error);
+      // Failed to clear failed logins
     }
   }
 }

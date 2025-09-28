@@ -2,9 +2,9 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from './entities/user.entity';
-import { RabbitmqService } from '../../integrations/rabbitmq/rabbitmq.service';
-import { throwError } from '../../common/helpers/response.helper';
-import { generateTrxId } from 'src/common/helpers/common.helper';
+import { RabbitmqService } from '@/integrations/rabbitmq/rabbitmq.service';
+import { throwError } from '@/common/helpers/response.helper';
+import { generateTrxId } from '@/common/helpers/common.helper';
 
 @Injectable()
 export class UsersService {

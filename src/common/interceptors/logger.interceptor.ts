@@ -1,6 +1,6 @@
 import { CallHandler, ExecutionContext, Injectable, NestInterceptor, Logger } from '@nestjs/common';
 import { Observable, catchError, tap, throwError } from 'rxjs';
-import { generateTrxId } from '../helpers/common.helper';
+import { generateTrxId } from '@/common/helpers/common.helper';
 import { HttpException, HttpStatus } from '@nestjs/common';
 
 @Injectable()

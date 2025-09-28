@@ -1,5 +1,9 @@
 import * as dotenv from 'dotenv';
-dotenv.config();
+
+// Only load dotenv in non-test environment
+if (process.env.NODE_ENV !== 'test') {
+  dotenv.config();
+}
 
 export const s3Config = {
   region: process.env.AWS_REGION ?? '',
