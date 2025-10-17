@@ -29,6 +29,15 @@ export async function bootstrap() {
     )
     .build();
 
+  const corsOrigin =
+    process.env.CORS_SITES_ALLOW === '*' ? '*' : process.env.CORS_SITES_ALLOW?.split(',').map((o) => o.trim());
+  app.enableCors({
+    origin: corsOrigin || '*',
+    credentials: true,
+    methods: 'GET,POST,PUT,PATCH,DELETE,OPTIONS',
+    allowedHeaders: 'Content-Type, Authorization',
+  });
+
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('docs', app, document);
 
