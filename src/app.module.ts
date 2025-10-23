@@ -4,6 +4,7 @@ import { ConfigModule } from '@nestjs/config';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { UsersModule } from './modules/users/users.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { MenusModule } from './modules/menus/menus.module';
 import { APP_GUARD } from '@nestjs/core';
 
 @Module({
@@ -32,6 +33,7 @@ import { APP_GUARD } from '@nestjs/core';
     }),
     UsersModule,
     AuthModule,
+    MenusModule,
   ],
   providers: [
     {

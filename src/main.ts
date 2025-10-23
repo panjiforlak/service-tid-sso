@@ -11,7 +11,7 @@ export async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
 
-  app.setGlobalPrefix('api/sso');
+  app.setGlobalPrefix('api');
 
   const config = new DocumentBuilder()
     .setTitle('SSO Phase')

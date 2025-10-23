@@ -21,7 +21,7 @@ import {
 } from './auth.swagger';
 
 @ApiAuthTags()
-@Controller('auth')
+@Controller('sso/auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
