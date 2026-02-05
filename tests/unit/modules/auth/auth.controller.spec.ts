@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuthController } from 'src/modules/auth/auth.controller';
 import { AuthService } from 'src/modules/auth/auth.service';
-import { successResponse } from 'src/common/helpers/response.helper';
+import { successResponse } from 'src/shared/helpers/common.helpers';
 
 describe('AuthController', () => {
   let controller: AuthController;

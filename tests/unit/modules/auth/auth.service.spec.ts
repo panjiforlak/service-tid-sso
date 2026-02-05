@@ -7,7 +7,6 @@ import { UserSession } from 'src/modules/users/entities/user-session.entity';
 import { PasswordReset } from 'src/modules/users/entities/password-reset.entity';
 import { FailedLogin } from 'src/modules/users/entities/failed-login.entity';
 import * as bcrypt from 'bcrypt';
-import { throwError } from 'src/common/helpers/response.helper';
 
 jest.mock('bcrypt');
 

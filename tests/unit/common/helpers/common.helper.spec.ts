@@ -1,4 +1,4 @@
-import { generateTrxId } from 'src/common/helpers/common.helper';
+import { generateTrxId } from 'src/shared/helpers/common.helpers';
 
 describe('CommonHelper', () => {
   describe('generateTrxId', () => {
@@ -8,13 +8,13 @@ describe('CommonHelper', () => {
       // Should be a string
       expect(typeof trxId).toBe('string');
 
-      // Should start with 'TID'
-      expect(trxId).toMatch(/^TID/);
+      // Should start with 'ITI'
+      expect(trxId).toMatch(/^ITI/);
 
-      // Should have correct length (TID + mode + date + random)
+      // Should have correct length (ITI + mode + date + random)
       expect(trxId).toHaveLength(25);
 
-      // Should contain only alphanumeric characters after TID
+      // Should contain only alphanumeric characters after ITI
       expect(trxId.substring(3)).toMatch(/^[A-Z0-9]+$/);
     });
 
@@ -45,7 +45,7 @@ describe('CommonHelper', () => {
 
       const trxId = generateTrxId();
 
-      expect(trxId).toMatch(/^TIDPRD/);
+      expect(trxId).toMatch(/^ITIPRD/);
       expect(trxId).toHaveLength(25);
 
       // Restore original environment
@@ -58,7 +58,7 @@ describe('CommonHelper', () => {
 
       const trxId = generateTrxId();
 
-      expect(trxId).toMatch(/^TIDDEV/);
+      expect(trxId).toMatch(/^ITIDEV/);
       expect(trxId).toHaveLength(25);
 
       // Restore original environment

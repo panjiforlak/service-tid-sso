@@ -5,7 +5,7 @@ import { LoggerInterceptor } from './common/interceptors/logger.interceptor';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { BadRequestException, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { generateTrxId } from './common/helpers/common.helper';
+import { generateTrxId } from './shared/helpers/common.helpers';
 
 export async function bootstrap() {
   const app = await NestFactory.create(AppModule);

@@ -1,10 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { UsersController, UploadController } from 'src/modules/users/users.controller';
 import { UsersService } from 'src/modules/users/users.service';
-import { successResponse, throwError } from 'src/common/helpers/response.helper';
 import { S3Service } from 'src/integrations/s3/s3.service';
 
-jest.mock('src/common/helpers/response.helper', () => ({
+jest.mock('src/shared/helpers/response.helper', () => ({
   successResponse: (data: any) => ({ success: true, data }),
   throwError: (message: string, status: number) => {
     throw new Error(`${status} - ${message}`);

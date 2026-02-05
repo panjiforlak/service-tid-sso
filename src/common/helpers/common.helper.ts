@@ -1,10 +1,6 @@
 import { randomBytes } from 'crypto';
 
-export function generateTrxId(prefix = 'TID'): string {
-  // pakai timestamp (ms sejak epoch)
-  //   const timestamp = Date.now();
-
-  // format jamtgltahun → ddMMyyyyHHmmss
+export function generateTrxId(prefix = 'ITI'): string {
   const now = new Date();
   const pad = (n: number) => n.toString().padStart(2, '0');
   const dateStr = [

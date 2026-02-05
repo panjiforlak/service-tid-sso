@@ -12,7 +12,7 @@ import {
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { User } from './entities/user.entity';
-import { successResponse, throwError } from '@/common/helpers/response.helper';
+import { successResponse, throwError } from '@/shared/helpers/common.helpers';
 import { JwtAuthGuard } from '@/common/guard/jwt-auth.guard';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { S3Service } from '@/integrations/s3/s3.service';

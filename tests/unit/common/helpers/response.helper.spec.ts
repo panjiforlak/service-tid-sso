@@ -1,4 +1,4 @@
-import { successResponse, throwError, errorResponse, paginateResponse } from 'src/common/helpers/response.helper';
+import { successResponse, throwError, errorResponse, paginateResponse } from 'src/shared/helpers/common.helpers';
 import { HttpException } from '@nestjs/common';
 
 describe('ResponseHelper', () => {

@@ -7,7 +7,7 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
-import { successResponse } from '@/common/helpers/response.helper';
+import { successResponse } from '@/shared/helpers/common.helpers';
 import { JwtAuthGuard } from '@/common/guard/jwt-auth.guard';
 import {
   ApiAuthTags,

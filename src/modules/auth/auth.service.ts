@@ -5,7 +5,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, LessThan } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
-import { throwError } from '@/common/helpers/response.helper';
+import { throwError } from '@/shared/helpers/common.helpers';
 import { User } from '@/modules/users/entities/user.entity';
 import { UserSession } from '@/modules/users/entities/user-session.entity';
 import { PasswordReset } from '@/modules/users/entities/password-reset.entity';
