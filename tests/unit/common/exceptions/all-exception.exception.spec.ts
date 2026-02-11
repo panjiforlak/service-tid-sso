@@ -3,7 +3,6 @@ import { HttpException, HttpStatus } from '@nestjs/common';
 import { ArgumentsHost } from '@nestjs/common';
 import { ThrottlerException } from '@nestjs/throttler';
 import { AllExceptionsFilter } from 'src/common/shared/http/filters/all-exception.filter';
-import { RateLimiter } from 'src/common/shared/http/filters/rate-limiter.filter';
 
 describe('AllExceptionsFilter', () => {
   let filter: AllExceptionsFilter;
@@ -222,14 +221,14 @@ describe('AllExceptionsFilter', () => {
 });
 
 describe('RateLimiter', () => {
-  let filter: RateLimiter;
+  let filter: ThrottlerException;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [RateLimiter],
+      providers: [ThrottlerException],
     }).compile();
 
-    filter = module.get<RateLimiter>(RateLimiter);
+    filter = module.get<ThrottlerException>(ThrottlerException);
   });
 
   it('should be defined', () => {
