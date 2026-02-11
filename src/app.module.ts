@@ -1,35 +1,45 @@
 import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule } from '@nestjs/config';
-import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+
 import { UsersModule } from './modules/users/users.module';
 import { AuthModule } from './modules/auth/auth.module';
-import { APP_GUARD } from '@nestjs/core';
+import { databaseConfig } from './database/config/database.config';
+import { LoggerModule } from 'nestjs-pino';
+import { LoggerInterceptor } from './common/shared/http/interceptors/logger.interceptor';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({
-      isGlobal: true,
+    ConfigModule.forRoot({ isGlobal: true }),
+
+    LoggerModule.forRoot({
+      pinoHttp: {
+        level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
+        transport:
+          process.env.NODE_ENV !== 'production'
+            ? {
+                target: 'pino-pretty',
+                options: {
+                  colorize: true,
+                  singleLine: true,
+                  translateTime: 'SYS:standard',
+                },
+              }
+            : undefined,
+        autoLogging: false,
+      },
     }),
+
     ThrottlerModule.forRoot([
-      //v6 throttle
       {
-        ttl: 60000, // 1 menit (dalam ms, bukan detik)
-        limit: 100, // 100 request per menit global
+        ttl: 60000,
+        limit: 100,
       },
     ]),
-    TypeOrmModule.forRootAsync({
-      useFactory: () => ({
-        type: 'postgres',
-        host: process.env.POSTGRES_HOST,
-        port: parseInt(process.env.POSTGRES_PORT || '5432'),
-        username: process.env.POSTGRES_USER,
-        password: process.env.POSTGRES_PASSWORD,
-        database: process.env.POSTGRES_DB,
-        entities: [__dirname + '/modules/**/entities/*.entity{.ts,.js}'],
-        synchronize: false,
-      }),
-    }),
+
+    ...databaseConfig(),
+
     UsersModule,
     AuthModule,
   ],
@@ -37,6 +47,10 @@ import { APP_GUARD } from '@nestjs/core';
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: LoggerInterceptor,
     },
   ],
 })

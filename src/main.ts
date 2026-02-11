@@ -1,22 +1,29 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { AllExceptionsFilter, RateLimiter } from './common/exceptions/all-exception.exception';
-import { LoggerInterceptor } from './common/interceptors/logger.interceptor';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { BadRequestException, ValidationPipe } from '@nestjs/common';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
-import { generateTrxId } from './shared/helpers/common.helpers';
+import { generateTrxId } from './common/shared/helpers/common.helpers';
+import { RateLimiter } from './common/shared/http/filters/rate-limiter.filter';
+import { AllExceptionsFilter } from './common/shared/http/filters/all-exception.filter';
+import { TrxIdInterceptor } from './common/shared/http/interceptors/trx-id.interceptor';
 
-export async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule, {
+    bufferLogs: true, //pino
+  });
+
   const configService = app.get(ConfigService);
 
+  /* GLOBAL CONFIG */
   app.setGlobalPrefix('api');
+  app.useGlobalFilters(new RateLimiter(), new AllExceptionsFilter());
 
-  const config = new DocumentBuilder()
+  /* SWAGGER SETUP */
+  const swaggerConfig = new DocumentBuilder()
     .setTitle('SSO Phase')
     .setDescription('API documentation')
-    .setVersion('1')
+    .setVersion('1.0.0')
     .addBearerAuth(
       {
         type: 'http',
@@ -29,9 +36,10 @@ export async function bootstrap() {
     )
     .build();
 
-  const document = SwaggerModule.createDocument(app, config);
+  const document = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup('docs', app, document);
 
+  /* VALIDATION PIPE */
   const isStrictValidation = configService.get<string>('STRICT_VALIDATION') === 'true';
 
   app.useGlobalPipes(
@@ -42,12 +50,11 @@ export async function bootstrap() {
       exceptionFactory: (errors) => {
         const trxId = generateTrxId();
 
-        // Ambil pesan validation dari class-validator
         const validationMessages = errors.map((err) => Object.values(err.constraints || {}).join(', '));
 
         return new BadRequestException({
           statusCode: 400,
-          message: 'Please check your account or password!',
+          message: 'Validation failed',
           data: {
             error: true,
             validation: validationMessages,
@@ -57,10 +64,15 @@ export async function bootstrap() {
       },
     }),
   );
-  app.useGlobalFilters(new AllExceptionsFilter(), new RateLimiter());
-  app.useGlobalInterceptors(new LoggerInterceptor());
+  /* GLOBAL INTERCEPTORS */
+  app.useGlobalInterceptors(new TrxIdInterceptor());
 
-  await app.listen(process.env.PORT ?? 3000);
+  /* LISTENER */
+  const port = configService.get<number>('PORT') || 3000;
+  await app.listen(port);
+
+  // console.log(`🚀 API running on http://localhost:${port}`);
+  // console.log(`📚 Swagger docs on http://localhost:${port}/docs`);
 }
 
 bootstrap();

@@ -1,8 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { AllExceptionsFilter, RateLimiter } from 'src/common/exceptions/all-exception.exception';
 import { HttpException, HttpStatus } from '@nestjs/common';
 import { ArgumentsHost } from '@nestjs/common';
 import { ThrottlerException } from '@nestjs/throttler';
+import { AllExceptionsFilter } from 'src/common/shared/http/filters/all-exception.filter';
+import { RateLimiter } from 'src/common/shared/http/filters/rate-limiter.filter';
 
 describe('AllExceptionsFilter', () => {
   let filter: AllExceptionsFilter;
@@ -261,7 +262,7 @@ describe('RateLimiter', () => {
       expect(mockResponse.json).toHaveBeenCalledWith({
         statusCode: 429,
         message: 'You are suspected of fraud!.',
-        data: { info: 'Too Many Requests' },
+        data: { info: 'Too Many Requestsss' },
         trxId: expect.any(String),
       });
     });

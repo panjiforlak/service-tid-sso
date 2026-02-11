@@ -1,5 +1,5 @@
 import { Controller, Post, Body, HttpCode, Get, Put, UseGuards, Request, Headers } from '@nestjs/common';
-import { Throttle } from '@nestjs/throttler';
+import { Throttle, ThrottlerException } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
@@ -7,7 +7,7 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
-import { successResponse } from '@/shared/helpers/common.helpers';
+import { successResponse } from 'src/common/shared/helpers/common.helpers';
 import { JwtAuthGuard } from '@/common/guard/jwt-auth.guard';
 import {
   ApiAuthTags,

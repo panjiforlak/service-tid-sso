@@ -1,4 +1,4 @@
-import { generateTrxId } from 'src/shared/helpers/common.helpers';
+import { generateTrxId } from 'src/common/shared/helpers/common.helpers';
 
 describe('CommonHelper', () => {
   describe('generateTrxId', () => {

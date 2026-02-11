@@ -12,7 +12,7 @@ import {
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { User } from './entities/user.entity';
-import { successResponse, throwError } from '@/shared/helpers/common.helpers';
+import { successResponse, throwError } from 'src/common/shared/helpers/common.helpers';
 import { JwtAuthGuard } from '@/common/guard/jwt-auth.guard';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { S3Service } from '@/integrations/s3/s3.service';
@@ -38,7 +38,7 @@ export class UsersController {
   async findOne(@Param('id') id: number): Promise<any> {
     const user = await this.usersService.findById(id);
     if (!user) {
-      throwError('User not found', 404);
+      throwError('User not found', 'User Controller', 'Find One', 404);
     }
     return successResponse(user);
   }

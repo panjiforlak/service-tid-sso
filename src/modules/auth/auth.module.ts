@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtModule } from '@nestjs/jwt';
@@ -11,7 +10,6 @@ import { JwtStrategy } from './jwt.strategy';
 import { UserSession } from '@/modules/users/entities/user-session.entity';
 import { PasswordReset } from '@/modules/users/entities/password-reset.entity';
 import { FailedLogin } from '@/modules/users/entities/failed-login.entity';
-import { APP_GUARD } from '@nestjs/core';
 
 @Module({
   imports: [

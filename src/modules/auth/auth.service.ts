@@ -5,7 +5,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, LessThan } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
-import { throwError } from '@/shared/helpers/common.helpers';
+import { throwError } from 'src/common/shared/helpers/common.helpers';
 import { User } from '@/modules/users/entities/user.entity';
 import { UserSession } from '@/modules/users/entities/user-session.entity';
 import { PasswordReset } from '@/modules/users/entities/password-reset.entity';
@@ -32,18 +32,23 @@ export class AuthService {
     try {
       const user = await this.usersService.findByUsername(username);
       if (!user) {
-        throwError('Please check your account or password!', 404);
+        throwError('No account found with the provided username.', 'AUTH_SERVICE', 'TRACK_FAILED_LOGIN', 404);
       }
 
       const isMatch = await bcrypt.compare(pass, user.password);
       if (!isMatch) {
-        throwError('Please check your account or password!', 404);
+        throwError('The password you entered is incorrect', 'AUTH_SERVICE', 'TRACK_FAILED_LOGIN', 404);
       }
 
       const { password, ...result } = user;
       return result;
     } catch (error) {
-      throwError(error?.message || 'Something went wrong while validating user', error?.status || 500);
+      throwError(
+        error?.message || 'Something went wrong while validating user',
+        'AUTH_SERVICE',
+        'TRACK_FAILED_LOGIN',
+        error?.status || 500,
+      );
     }
   }
 
@@ -106,7 +111,7 @@ export class AuthService {
 
       return { access_token: newAccessToken };
     } catch (error) {
-      throwError('Invalid or expired refresh token', 401);
+      throwError('Invalid or expired refresh token', 'Auth Service', 'Refresh Token', 401);
     }
   }
 
@@ -116,12 +121,12 @@ export class AuthService {
 
       const existingUser = await this.usersService.findByUsername(username);
       if (existingUser) {
-        throwError('Username already exists', 400);
+        throwError('Username already exists', 'Auth Service', 'Register', 400);
       }
 
       const existingEmail = await this.usersService.findByEmail(email);
       if (existingEmail) {
-        throwError('Email already exists', 400);
+        throwError('Email already exists', 'Auth Service', 'Register', 400);
       }
 
       const hashedPassword = await bcrypt.hash(password, 10);
@@ -138,7 +143,12 @@ export class AuthService {
       const { password: _, ...result } = user;
       return result;
     } catch (error) {
-      throwError(error?.message || 'Something went wrong while registering user', error?.status || 500);
+      throwError(
+        error?.message || 'Something went wrong while registering user',
+        'Auth Service',
+        'Register',
+        error?.status || 500,
+      );
     }
   }
 
@@ -147,7 +157,7 @@ export class AuthService {
       await this.userSessionRepository.update({ session_token: sessionToken }, { is_active: false });
       return { message: 'Logged out successfully' };
     } catch (error) {
-      throwError('Something went wrong while logging out', 500);
+      throwError('Something went wrong while logging out', 'Auth Service', 'Logout', 500);
     }
   }
 
@@ -184,7 +194,7 @@ export class AuthService {
       const user = await this.usersService.findByEmail(email);
 
       if (!user) {
-        throwError('Email not found', 404);
+        throwError('Email not found', 'Auth Service', 'Forgot Password', 404);
       }
 
       const resetToken = uuidv4();
@@ -202,7 +212,12 @@ export class AuthService {
         reset_token: resetToken, // Nanti klo udah live gausa dipake.
       };
     } catch (error) {
-      throwError(error?.message || 'Something went wrong while processing forgot password', error?.status || 500);
+      throwError(
+        error?.message || 'Something went wrong while processing forgot password',
+        'Auth Service',
+        'Forgot Password',
+        error?.status || 500,
+      );
     }
   }
 
@@ -219,11 +234,11 @@ export class AuthService {
       });
 
       if (!passwordReset) {
-        throwError('Invalid or expired reset token', 400);
+        throwError('Invalid or expired reset token', 'Auth Service', 'Reset Password', 400);
       }
 
       if (passwordReset.expires_at < new Date()) {
-        throwError('Reset token has expired', 400);
+        throwError('Reset token has expired', 'Auth Service', 'Reset Password', 400);
       }
 
       const hashedPassword = await bcrypt.hash(new_password, 10);
@@ -233,7 +248,12 @@ export class AuthService {
 
       return { message: 'Password reset successfully' };
     } catch (error) {
-      throwError(error?.message || 'Something went wrong while resetting password', error?.status || 500);
+      throwError(
+        error?.message || 'Something went wrong while resetting password',
+        'Auth Service',
+        'Reset Password',
+        error?.status || 500,
+      );
     }
   }
 
@@ -243,12 +263,12 @@ export class AuthService {
 
       const user = await this.usersService.findById(userId);
       if (!user) {
-        throwError('User not found', 404);
+        throwError('User not found', 'Auth Service', 'Change Password', 404);
       }
 
       const isMatch = await bcrypt.compare(current_password, user.password);
       if (!isMatch) {
-        throwError('Current password is incorrect', 400);
+        throwError('Current password is incorrect', 'Auth Service', 'Change Password', 400);
       }
 
       const hashedPassword = await bcrypt.hash(new_password, 10);
@@ -256,7 +276,12 @@ export class AuthService {
 
       return { message: 'Password changed successfully' };
     } catch (error) {
-      throwError(error?.message || 'Something went wrong while changing password', error?.status || 500);
+      throwError(
+        error?.message || 'Something went wrong while changing password',
+        'Auth Service',
+        'Change Password',
+        error?.status || 500,
+      );
     }
   }
   s;
@@ -264,13 +289,18 @@ export class AuthService {
     try {
       const user = await this.usersService.findById(userId);
       if (!user) {
-        throwError('User not found', 404);
+        throwError('User not found', 'Auth Service', 'Get Profile', 404);
       }
 
       const { password, ...result } = user;
       return result;
     } catch (error) {
-      throwError(error?.message || 'Something went wrong while getting profile', error?.status || 500);
+      throwError(
+        error?.message || 'Something went wrong while getting profile',
+        'Auth Service ',
+        ' Get Profile',
+        error?.status || 500,
+      );
     }
   }
 
@@ -280,7 +310,12 @@ export class AuthService {
       const { password, ...result } = user;
       return result;
     } catch (error) {
-      throwError(error?.message || 'Something went wrong while updating profile', error?.status || 500);
+      throwError(
+        error?.message || 'Something went wrong while updating profile',
+        'AUTH_SERVICE',
+        'UPDATE_PROFILE',
+        error?.status || 500,
+      );
     }
   }
 
@@ -305,7 +340,7 @@ export class AuthService {
         );
 
         if (isLocked) {
-          throwError('Account locked due to too many failed attempts', 423);
+          throwError('Account locked due to too many failed attempts', 'auth service', 'track failed login', 423);
         }
       } else {
         await this.failedLoginRepository.save({
