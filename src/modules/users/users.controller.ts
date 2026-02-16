@@ -9,16 +9,18 @@ import {
   UseGuards,
   UseInterceptors,
   UploadedFile,
+  Req,
+  BadRequestException,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { User } from './entities/user.entity';
 import { successResponse, throwError } from 'src/common/shared/helpers/common.helpers';
 import { JwtAuthGuard } from '@/common/guard/jwt-auth.guard';
-import { FileInterceptor } from '@nestjs/platform-express';
 import { S3Service } from '@/integrations/s3/s3.service';
 import { UploadDto } from '@/integrations/s3/dto/upload.dto';
 import { ApiUsersTags, ApiGetProfile, ApiUpdateProfile, ApiUploadAvatar, ApiDeleteAvatar } from './users.swagger';
 import { ApiBearerAuth } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
 
 @ApiUsersTags()
 @ApiBearerAuth('jwt')
@@ -58,7 +60,6 @@ export class UsersController {
     return { message: 'User deleted successfully' };
   }
 }
-
 @Controller('upload')
 export class UploadController {
   constructor(private readonly s3Service: S3Service) {}

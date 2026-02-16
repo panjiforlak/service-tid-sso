@@ -18,14 +18,17 @@ import { FailedLogin } from '@/modules/users/entities/failed-login.entity';
     PassportModule,
     TypeOrmModule.forFeature([UserSession, PasswordReset, FailedLogin]),
     JwtModule.registerAsync({
-      imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        secret: config.get<string>('JWT_SECRET'),
-        signOptions: {
-          expiresIn: config.get<string>('JWT_EXPIRES_IN') || '1d',
-        },
-      }),
+      useFactory: (config: ConfigService) => {
+        const expiresIn = config.get<string>('JWT_EXPIRES_IN') ?? '1h';
+
+        return {
+          secret: config.get<string>('JWT_SECRET')!,
+          signOptions: {
+            expiresIn: expiresIn as unknown as number,
+          },
+        };
+      },
     }),
   ],
   providers: [AuthService, JwtStrategy],

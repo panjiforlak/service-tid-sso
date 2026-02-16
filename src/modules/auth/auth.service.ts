@@ -60,9 +60,8 @@ export class AuthService {
         role: user.role,
         permissions: user.permissions,
       };
-
-      const access_token = await this.jwtService.signAsync(payload, { expiresIn: process.env.JWT_EXPIRES_IN });
-      const refresh_token = await this.jwtService.signAsync(payload, { expiresIn: process.env.JWT_REFRESH_EXPIRES_IN });
+      const access_token = await this.jwtService.signAsync(payload);
+      const refresh_token = await this.jwtService.signAsync(payload);
 
       const existingSession = await this.userSessionRepository.findOne({
         where: {
@@ -106,8 +105,7 @@ export class AuthService {
         role: decoded.role,
         permissions: decoded.permissions,
       };
-
-      const newAccessToken = await this.jwtService.signAsync(payload, { expiresIn: process.env.JWT_EXPIRES_IN });
+      const newAccessToken = await this.jwtService.signAsync(payload);
 
       return { access_token: newAccessToken };
     } catch (error) {

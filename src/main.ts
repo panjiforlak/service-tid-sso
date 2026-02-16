@@ -1,16 +1,13 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { BadRequestException, ValidationPipe } from '@nestjs/common';
+import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
-import { generateTrxId } from './common/shared/helpers/common.helpers';
-import { ThrottlerExceptionFilter } from './common/shared/http/filters/throttler-exception.filter';
-import { AllExceptionsFilter } from './common/shared/http/filters/all-exception.filter';
 import { TrxIdInterceptor } from './common/shared/http/interceptors/trx-id.interceptor';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
-    bufferLogs: true,
+    logger: ['log', 'error'], // hilangkan warn noise
   });
 
   const configService = app.get(ConfigService);
@@ -35,13 +32,11 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup('docs', app, document);
 
-  /* VALIDATION PIPE */
-  const isStrictValidation = configService.get<string>('STRICT_VALIDATION') === 'true';
-
+  /* VALIDATION */
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: isStrictValidation,
-      forbidNonWhitelisted: isStrictValidation,
+      whitelist: true,
+      forbidNonWhitelisted: true,
       transform: true,
     }),
   );
@@ -50,6 +45,8 @@ async function bootstrap() {
   app.useGlobalInterceptors(new TrxIdInterceptor());
 
   await app.listen(configService.get<number>('PORT') || 3000);
+
+  console.log('🚀 Express server running...');
 }
 
-bootstrap();
+void bootstrap();

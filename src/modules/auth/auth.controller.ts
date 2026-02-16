@@ -1,4 +1,4 @@
-import { Controller, Post, Body, HttpCode, Get, Put, UseGuards, Request, Headers } from '@nestjs/common';
+import { Controller, Post, Body, HttpCode, Get, Put, UseGuards, Request, Headers, Req } from '@nestjs/common';
 import { Throttle, ThrottlerException } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
@@ -42,12 +42,12 @@ export class AuthController {
     },
   })
   @ApiLogin()
-  async login(@Body() body: LoginDto, @Headers('x-forwarded-for') ipAddress?: string) {
+  async login(@Body() body: LoginDto, @Req() req: Request, @Headers('x-forwarded-for') ipAddress?: string) {
     try {
       const user = await this.authService.validateUser(body.username, body.password);
       const token = await this.authService.login(user);
       await this.authService.clearFailedLogins(body.username);
-      return successResponse(token, 'Login successfully!');
+      return successResponse(token, 'Login successfully!', 200, req.headers['x-tz'] as string);
     } catch (error) {
       await this.authService.trackFailedLogin(body.username, ipAddress);
       throw error;
@@ -96,7 +96,7 @@ export class AuthController {
   async getProfile(@Request() req) {
     const userId = req.user.sub;
     const user = await this.authService.getProfile(userId);
-    return successResponse(user, 'Profile retrieved successfully!');
+    return successResponse(user, 'Profile retrieved successfully!', 200, req.headers['x-tz'] as string);
   }
 
   @Put('profile')
