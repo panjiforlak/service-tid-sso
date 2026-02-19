@@ -12,7 +12,7 @@ async function bootstrap() {
 
   const configService = app.get(ConfigService);
 
-  app.setGlobalPrefix('api');
+  app.setGlobalPrefix('api/sso');
 
   /* SWAGGER */
   const swaggerConfig = new DocumentBuilder()
@@ -46,7 +46,7 @@ async function bootstrap() {
 
   await app.listen(configService.get<number>('PORT') || 3000);
 
-  console.log('🚀 Express server running...');
+  console.log(`Server running on port ${configService.get<number>('PORT')}`);
 }
 
 void bootstrap();

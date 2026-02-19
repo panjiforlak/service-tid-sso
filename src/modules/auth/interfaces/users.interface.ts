@@ -1,4 +1,4 @@
-interface User {
+export interface IUser {
   id: number;
   username: string;
   password: string;
@@ -12,7 +12,7 @@ interface User {
   updated_at: Date;
 }
 
-interface UserPayload {
+export interface IJwtPayload {
   id: number;
   username: string;
   role: string;

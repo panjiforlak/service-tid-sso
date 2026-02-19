@@ -6,6 +6,6 @@ export class LoginDto {
   username: string;
 
   @IsString()
-  @IsNotEmpty({ message: 'Password is not empty' })
+  @IsNotEmpty({ message: 'Password is required' })
   password: string;
 }

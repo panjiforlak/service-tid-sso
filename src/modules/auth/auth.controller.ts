@@ -90,13 +90,21 @@ export class AuthController {
     return successResponse(result, 'Password changed successfully!');
   }
 
+  // @Get('profile')
+  // @UseGuards(JwtAuthGuard)
+  // @ApiUpdateProfile()
+  // async getProfile(@Request() req) {
+  //   const userId = req.user.sub;
+  //   const user = await this.authService.getProfile(userId);
+  //   return successResponse(user, 'Profile retrieved successfully!', 200, req.headers['x-tz'] as string);
+  // }
   @Get('profile')
   @UseGuards(JwtAuthGuard)
   @ApiUpdateProfile()
-  async getProfile(@Request() req) {
+  async getProfile(@Request() req, @Headers('x-tz') tz?: string) {
     const userId = req.user.sub;
-    const user = await this.authService.getProfile(userId);
-    return successResponse(user, 'Profile retrieved successfully!', 200, req.headers['x-tz'] as string);
+    const user = await this.authService.getProfile(userId, tz);
+    return successResponse(user, 'Profile retrieved successfully!', 200, tz);
   }
 
   @Put('profile')

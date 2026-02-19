@@ -5,7 +5,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, LessThan } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
-import { throwError } from 'src/common/shared/helpers/common.helpers';
+import { throwError, toLocalISOString } from 'src/common/shared/helpers/common.helpers';
 import { User } from '@/modules/users/entities/user.entity';
 import { UserSession } from '@/modules/users/entities/user-session.entity';
 import { PasswordReset } from '@/modules/users/entities/password-reset.entity';
@@ -15,6 +15,7 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import { IJwtPayload } from './interfaces/users.interface';
 @Injectable()
 export class AuthService {
   constructor(
@@ -52,7 +53,7 @@ export class AuthService {
     }
   }
 
-  async login(user: UserPayload) {
+  async login(user: IJwtPayload) {
     try {
       const payload = {
         username: user.username,
@@ -98,6 +99,17 @@ export class AuthService {
 
   async refreshToken(refreshToken: string) {
     try {
+      const session = await this.userSessionRepository.findOne({
+        where: {
+          refresh_token: refreshToken,
+          is_active: true,
+        },
+      });
+
+      if (!session) {
+        throwError('Invalid refresh token', 'AUTH_SERVICE', 'REFRESH_TOKEN', 401);
+      }
+
       const decoded = await this.jwtService.verifyAsync(refreshToken);
       const payload = {
         username: decoded.username,
@@ -282,8 +294,8 @@ export class AuthService {
       );
     }
   }
-  s;
-  async getProfile(userId: number) {
+
+  async getProfile(userId: number, localTz?: string) {
     try {
       const user = await this.usersService.findById(userId);
       if (!user) {
@@ -291,12 +303,26 @@ export class AuthService {
       }
 
       const { password, ...result } = user;
-      return result;
+
+      // buat object baru untuk response supaya tidak bentrok tipe
+      const response = {
+        ...result,
+        created_at:
+          localTz && result.created_at
+            ? toLocalISOString(result.created_at.toISOString(), localTz)
+            : result.created_at?.toISOString(),
+        updated_at:
+          localTz && result.updated_at
+            ? toLocalISOString(result.updated_at.toISOString(), localTz)
+            : result.updated_at?.toISOString(),
+      };
+
+      return response;
     } catch (error) {
       throwError(
         error?.message || 'Something went wrong while getting profile',
-        'Auth Service ',
-        ' Get Profile',
+        'Auth Service',
+        'Get Profile',
         error?.status || 500,
       );
     }
