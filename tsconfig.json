@@ -19,7 +19,8 @@
     "noFallthroughCasesInSwitch": false,
     "paths": {
       "src/*": ["src/*"],
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      "tests/*": ["tests/*"]
     },
     "resolveJsonModule": true,
     "esModuleInterop": true

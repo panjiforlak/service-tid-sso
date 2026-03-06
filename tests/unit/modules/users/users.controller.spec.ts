@@ -1,18 +1,14 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { HttpException, NotFoundException } from '@nestjs/common';
 import { UsersController, UploadController } from 'src/modules/users/users.controller';
 import { UsersService } from 'src/modules/users/users.service';
 import { S3Service } from 'src/integrations/s3/s3.service';
-
-jest.mock('src/shared/helpers/response.helper', () => ({
-  successResponse: (data: any) => ({ success: true, data }),
-  throwError: (message: string, status: number) => {
-    throw new Error(`${status} - ${message}`);
-  },
-}));
+import { createMockUsersService } from 'tests/__mocks__/user.mock';
+import { DeleteResult } from 'typeorm';
 
 describe('UsersController', () => {
   let controller: UsersController;
-  let service: UsersService;
+  let service: jest.Mocked<UsersService>;
 
   const mockUser = { id: 1, username: 'admin' };
 
@@ -27,6 +23,7 @@ describe('UsersController', () => {
   };
 
   beforeEach(async () => {
+    const mockUsersService = createMockUsersService();
     const module: TestingModule = await Test.createTestingModule({
       controllers: [UsersController],
       providers: [
@@ -38,7 +35,7 @@ describe('UsersController', () => {
     }).compile();
 
     controller = module.get<UsersController>(UsersController);
-    service = module.get<UsersService>(UsersService);
+    service = module.get(UsersService);
   });
 
   it('should be defined', () => {
@@ -47,26 +44,39 @@ describe('UsersController', () => {
 
   it('should return all users', async () => {
     const result = await controller.findAll();
-    expect(result).toEqual({ success: true, data: [mockUser] });
+    expect(result).toMatchObject({
+      data: [mockUser],
+      message: 'Retrieve data success',
+      statusCode: 200,
+      timestamp: expect.any(String),
+    });
     expect(service.findAll).toHaveBeenCalled();
   });
 
   it('should return one user', async () => {
     const result = await controller.findOne(1);
-    expect(result).toEqual({ success: true, data: mockUser });
+    expect(result).toMatchObject({
+      data: mockUser,
+      message: 'Retrieve data success',
+      statusCode: 200,
+      timestamp: expect.any(String),
+    });
     expect(service.findById).toHaveBeenCalledWith(1);
   });
 
   it('should throw error if user not found', async () => {
-    await expect(controller.findOne(999)).rejects.toThrow('404 - User not found');
+    await expect(controller.findOne(999)).rejects.toThrow(HttpException);
+    await expect(controller.findOne(999)).rejects.toThrow('User not found');
   });
 
   it('should create a user', async () => {
     const body = { username: 'test' };
     const result = await controller.create(body);
-    expect(result).toEqual({
-      success: true,
+    expect(result).toMatchObject({
       data: { id: 2, username: 'test' },
+      message: 'Retrieve data success',
+      statusCode: 200,
+      timestamp: expect.any(String),
     });
     expect(service.create).toHaveBeenCalledWith(body);
   });
@@ -78,15 +88,17 @@ describe('UsersController', () => {
   });
 
   it('should throw NotFoundException if user not found', async () => {
-    mockUsersService.delete.mockResolvedValueOnce({ affected: 0 });
+    const mockDeleteResult: DeleteResult = { raw: [], affected: 0 };
+    service.delete.mockResolvedValueOnce(mockDeleteResult);
 
-    await expect(controller.delete(999)).rejects.toThrow('User not found');
+    await expect(controller.delete(999)).rejects.toThrow(NotFoundException);
+    expect(service.delete).toHaveBeenCalledWith(999);
   });
 });
 
 describe('UploadController', () => {
-  let uploadController: any;
-  let s3Service: any;
+  let uploadController: UploadController;
+  let s3Service: S3Service;
 
   const mockS3Service = {
     uploadFile: jest.fn().mockResolvedValue('https://example.com/file.jpg'),
@@ -94,20 +106,8 @@ describe('UploadController', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      controllers: [UsersController],
+      controllers: [UploadController],
       providers: [
-        {
-          provide: UsersService,
-          useValue: {
-            findAll: jest.fn().mockResolvedValue([]),
-            findById: jest.fn().mockResolvedValue(null),
-            create: jest.fn().mockResolvedValue({}),
-            delete: jest.fn().mockResolvedValue({}),
-            findByEmail: jest.fn().mockResolvedValue(null),
-            updatePassword: jest.fn().mockResolvedValue(undefined),
-            updateProfile: jest.fn().mockResolvedValue({}),
-          },
-        },
         {
           provide: S3Service,
           useValue: mockS3Service,
@@ -115,14 +115,12 @@ describe('UploadController', () => {
       ],
     }).compile();
 
-    const controller = module.get<UsersController>(UsersController);
-    uploadController = {
-      s3Service: mockS3Service,
-      upload: async (file: Express.Multer.File, body: any) => {
-        const url = await uploadController.s3Service.uploadFile(file, body.folder);
-        return { url };
-      },
-    };
+    uploadController = module.get<UploadController>(UploadController);
+    s3Service = module.get<S3Service>(S3Service);
+  });
+
+  it('should be defined', () => {
+    expect(uploadController).toBeDefined();
   });
 
   it('should upload file and return URL', async () => {
@@ -135,7 +133,7 @@ describe('UploadController', () => {
 
     const result = await uploadController.upload(mockFile, body);
 
-    expect(mockS3Service.uploadFile).toHaveBeenCalledWith(mockFile, 'uploads');
+    expect(s3Service.uploadFile).toHaveBeenCalledWith(mockFile, 'uploads');
     expect(result).toEqual({ url: 'https://example.com/file.jpg' });
   });
 
@@ -149,84 +147,7 @@ describe('UploadController', () => {
 
     const result = await uploadController.upload(mockFile, body);
 
-    expect(mockS3Service.uploadFile).toHaveBeenCalledWith(mockFile, 'documents');
-    expect(result).toEqual({ url: 'https://example.com/file.jpg' });
-  });
-
-  it('should test UploadController constructor', () => {
-    const UploadControllerClass = class {
-      constructor(private readonly s3Service: any) {}
-    };
-
-    const instance = new UploadControllerClass(mockS3Service);
-    expect(instance).toBeDefined();
-  });
-
-  it('should test upload method directly', async () => {
-    const mockFile = {
-      originalname: 'test.jpg',
-      buffer: Buffer.from('test'),
-    } as Express.Multer.File;
-
-    const body = { folder: 'uploads' };
-    const url = await mockS3Service.uploadFile(mockFile, body.folder);
-    const result = { url };
-
-    expect(mockS3Service.uploadFile).toHaveBeenCalledWith(mockFile, 'uploads');
-    expect(result).toEqual({ url: 'https://example.com/file.jpg' });
-  });
-
-  it('should test UploadController with actual class', () => {
-    class TestUploadController {
-      constructor(private readonly s3Service: S3Service) {}
-
-      async upload(file: Express.Multer.File, body: any) {
-        const url = await this.s3Service.uploadFile(file, body.folder);
-        return { url };
-      }
-    }
-
-    const testController = new TestUploadController(mockS3Service as any);
-    expect(testController).toBeDefined();
-    expect(mockS3Service).toBeDefined();
-  });
-
-  it('should test UploadController upload method with actual implementation', async () => {
-    const mockFile = {
-      originalname: 'test.jpg',
-      buffer: Buffer.from('test'),
-    } as Express.Multer.File;
-    const body = { folder: 'uploads' };
-    const url = await mockS3Service.uploadFile(mockFile, body.folder);
-    const result = { url };
-
-    expect(mockS3Service.uploadFile).toHaveBeenCalledWith(mockFile, 'uploads');
-    expect(result).toEqual({ url: 'https://example.com/file.jpg' });
-  });
-
-  it('should test UploadController class directly', async () => {
-    const module: TestingModule = await Test.createTestingModule({
-      controllers: [UploadController],
-      providers: [
-        {
-          provide: S3Service,
-          useValue: mockS3Service,
-        },
-      ],
-    }).compile();
-
-    const uploadController = module.get<UploadController>(UploadController);
-
-    const mockFile = {
-      originalname: 'test.jpg',
-      buffer: Buffer.from('test'),
-    } as Express.Multer.File;
-
-    const body = { folder: 'uploads' };
-
-    const result = await uploadController.upload(mockFile, body);
-
-    expect(mockS3Service.uploadFile).toHaveBeenCalledWith(mockFile, 'uploads');
+    expect(s3Service.uploadFile).toHaveBeenCalledWith(mockFile, 'documents');
     expect(result).toEqual({ url: 'https://example.com/file.jpg' });
   });
 });

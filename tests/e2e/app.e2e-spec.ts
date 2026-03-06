@@ -2,8 +2,9 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { AppModule } from 'src/app.module';
+import { TrxIdInterceptor } from 'src/common/shared/http/interceptors/trx-id.interceptor';
+import { GlobalExceptionFilter } from 'src/common/shared/http/interceptors/global-exception.filter';
 
-// Mock S3 configuration
 jest.mock('src/integrations/s3/s3.config', () => ({
   s3Config: {
     region: 'us-east-1',
@@ -22,6 +23,11 @@ describe('AppController (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
+
+    app.setGlobalPrefix('api');
+
+    app.useGlobalInterceptors(new TrxIdInterceptor());
+    app.useGlobalFilters(new GlobalExceptionFilter());
     await app.init();
   });
 
@@ -138,6 +144,17 @@ describe('AppController (e2e)', () => {
           // Check if CORS headers are present (if configured)
           expect(res.headers).toBeDefined();
         });
+    });
+    it('should include trxId in 404 response', async () => {
+      const res = await request(app.getHttpServer()).get('/api/non-existent').expect(404);
+
+      expect(res.body).toMatchObject({
+        statusCode: 404,
+        trxId: expect.any(String),
+        timestamp: expect.any(String),
+      });
+
+      expect(res.headers['x-transaction-id']).toBeDefined();
     });
   });
 });

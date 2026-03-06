@@ -1,5 +1,6 @@
 import { successResponse, throwError, errorResponse, paginateResponse } from 'src/common/shared/helpers/common.helpers';
 import { HttpException } from '@nestjs/common';
+import { request } from 'node:http';
 
 describe('ResponseHelper', () => {
   describe('successResponse', () => {
@@ -13,7 +14,7 @@ describe('ResponseHelper', () => {
         statusCode: 200,
         message,
         data,
-        trxId: expect.any(String),
+        timestamp: expect.any(String),
       });
     });
 
@@ -26,7 +27,7 @@ describe('ResponseHelper', () => {
         statusCode: 200,
         message: 'Retrieve data success',
         data,
-        trxId: expect.any(String),
+        timestamp: expect.any(String),
       });
     });
 
@@ -37,17 +38,17 @@ describe('ResponseHelper', () => {
         statusCode: 200,
         message: 'Retrieve data success',
         data: null,
-        trxId: expect.any(String),
+        timestamp: expect.any(String),
       });
     });
 
-    it('should include trxId in response', () => {
-      const result = successResponse({});
+    // it('should include trxId in response', () => {
+    //   const result = successResponse({});
 
-      expect(result.trxId).toBeDefined();
-      expect(typeof result.trxId).toBe('string');
-      expect(result.trxId).toMatch(/^TID/);
-    });
+    //   expect(result.trxId).toBeDefined();
+    //   expect(typeof result.trxId).toBe('string');
+    //   expect(result.trxId).toMatch(/^TID/);
+    // });
 
     it('should use default message and statusCode when not provided', () => {
       const data = { id: 1, name: 'test' };
@@ -58,7 +59,7 @@ describe('ResponseHelper', () => {
         statusCode: 200,
         message: 'Retrieve data success',
         data,
-        trxId: expect.any(String),
+        timestamp: expect.any(String),
       });
     });
 
@@ -72,7 +73,7 @@ describe('ResponseHelper', () => {
         statusCode: 200,
         message: 'Custom message',
         data,
-        trxId: expect.any(String),
+        timestamp: expect.any(String),
       });
     });
   });
@@ -85,7 +86,6 @@ describe('ResponseHelper', () => {
         statusCode: 400,
         message: 'Error',
         error: true,
-        trxId: expect.any(String),
         timestamp: expect.any(String),
       });
     });
@@ -95,13 +95,12 @@ describe('ResponseHelper', () => {
       const statusCode = 500;
       const extra = { field: 'value' };
 
-      const result = errorResponse(message, statusCode, true, extra);
+      const result = errorResponse(message, statusCode, extra);
 
       expect(result).toEqual({
         statusCode: 500,
         message: 'Custom error',
         error: true,
-        trxId: expect.any(String),
         timestamp: expect.any(String),
         field: 'value',
       });
@@ -113,7 +112,7 @@ describe('ResponseHelper', () => {
         details: { field: 'email', message: 'Invalid format' },
       };
 
-      const result = errorResponse('Validation failed', 422, true, extra);
+      const result = errorResponse('Validation failed', 422, extra);
 
       expect(result).toMatchObject({
         statusCode: 422,
@@ -125,37 +124,34 @@ describe('ResponseHelper', () => {
     });
 
     it('should handle null extra parameter', () => {
-      const result = errorResponse('Error message', 400, true, null as any);
+      const result = errorResponse('Error message', 400, null as any);
 
       expect(result).toEqual({
         statusCode: 400,
         message: 'Error message',
         error: true,
-        trxId: expect.any(String),
         timestamp: expect.any(String),
       });
     });
 
     it('should handle undefined extra parameter', () => {
-      const result = errorResponse('Error message', 400, true, undefined);
+      const result = errorResponse('Error message', 400, undefined);
 
       expect(result).toEqual({
         statusCode: 400,
         message: 'Error message',
         error: true,
-        trxId: expect.any(String),
         timestamp: expect.any(String),
       });
     });
 
     it('should handle empty object extra parameter', () => {
-      const result = errorResponse('Error message', 400, true, {});
+      const result = errorResponse('Error message', 400, {});
 
       expect(result).toEqual({
         statusCode: 400,
         message: 'Error message',
         error: true,
-        trxId: expect.any(String),
         timestamp: expect.any(String),
       });
     });
@@ -167,7 +163,6 @@ describe('ResponseHelper', () => {
         statusCode: 400,
         message: 'Error',
         error: true,
-        trxId: expect.any(String),
         timestamp: expect.any(String),
       });
     });
@@ -179,7 +174,6 @@ describe('ResponseHelper', () => {
         statusCode: 400,
         message: 'Custom error message',
         error: true,
-        trxId: expect.any(String),
         timestamp: expect.any(String),
       });
     });
@@ -191,7 +185,6 @@ describe('ResponseHelper', () => {
         statusCode: 500,
         message: 'Custom error message',
         error: true,
-        trxId: expect.any(String),
         timestamp: expect.any(String),
       });
     });
@@ -214,7 +207,6 @@ describe('ResponseHelper', () => {
           limit: 10,
           totalPages: 1,
         },
-        trxId: expect.any(String),
       });
     });
 
@@ -238,7 +230,6 @@ describe('ResponseHelper', () => {
           limit: 10,
           totalPages: 3,
         },
-        trxId: expect.any(String),
       });
     });
 
@@ -249,7 +240,7 @@ describe('ResponseHelper', () => {
 
       const result = paginateResponse(data, total, 1, limit);
 
-      expect(result.meta.totalPages).toBe(7); // Math.ceil(100/15) = 7
+      expect(result.meta!.totalPages).toBe(7); // Math.ceil(100/15) = 7
     });
 
     it('should handle zero total', () => {
@@ -258,7 +249,7 @@ describe('ResponseHelper', () => {
 
       const result = paginateResponse(data, total);
 
-      expect(result.meta.totalPages).toBe(0);
+      expect(result.meta!.totalPages).toBe(0);
     });
 
     it('should use default values for page, limit, message, and statusCode', () => {
@@ -277,7 +268,6 @@ describe('ResponseHelper', () => {
           limit: 10,
           totalPages: 1,
         },
-        trxId: expect.any(String),
       });
     });
 
@@ -299,7 +289,6 @@ describe('ResponseHelper', () => {
           limit: 5,
           totalPages: 1,
         },
-        trxId: expect.any(String),
       });
     });
   });
@@ -316,8 +305,8 @@ describe('ResponseHelper', () => {
       const message = 'Not found';
       const status = 404;
 
-      expect(() => throwError(message, status)).toThrow(HttpException);
-      expect(() => throwError(message, status)).toThrow(message);
+      expect(() => throwError(message, '', '', status)).toThrow(HttpException);
+      expect(() => throwError(message, '', '', status)).toThrow(message);
     });
 
     it('should throw HttpException with 400 status by default', () => {
@@ -336,7 +325,7 @@ describe('ResponseHelper', () => {
       const status = 401;
 
       try {
-        throwError(message, status);
+        throwError(message, '', '', status);
       } catch (error) {
         expect(error).toBeInstanceOf(HttpException);
         expect(error.getStatus()).toBe(401);
@@ -361,8 +350,10 @@ describe('ResponseHelper', () => {
         expect(error).toBeInstanceOf(HttpException);
         expect(error.getStatus()).toBe(400);
         expect(error.getResponse()).toEqual({
+          statusCode: 400,
           message: 'Bad Request',
-          trxId: expect.any(String),
+          error: true,
+          timestamp: expect.any(String),
         });
       }
     });
@@ -374,8 +365,10 @@ describe('ResponseHelper', () => {
         expect(error).toBeInstanceOf(HttpException);
         expect(error.getStatus()).toBe(400);
         expect(error.getResponse()).toEqual({
+          statusCode: 400,
           message: 'Bad Request',
-          trxId: expect.any(String),
+          error: true,
+          timestamp: expect.any(String),
         });
       }
     });

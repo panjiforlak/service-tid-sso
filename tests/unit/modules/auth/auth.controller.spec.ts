@@ -1,63 +1,26 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuthController } from 'src/modules/auth/auth.controller';
 import { AuthService } from 'src/modules/auth/auth.service';
-import { successResponse } from 'src/common/shared/helpers/common.helpers';
+import { createMockAuthService, mockJwt, mockUser } from 'tests/__mocks__/auth.mock';
 
 describe('AuthController', () => {
   let controller: AuthController;
-  let authService: AuthService;
-
-  const mockUser = {
-    id: 1,
-    username: 'admin',
-    role: 'user',
-    permissions: ['read'],
-  };
-  const mockJwt = {
-    access_token: 'mocked-jwt-token',
-    refresh_token: 'mocked-refresh-token',
-  };
-
-  const mockAuthService = {
-    validateUser: jest.fn().mockResolvedValue(mockUser),
-    login: jest.fn().mockResolvedValue(mockJwt),
-    refreshToken: jest.fn().mockResolvedValue({ access_token: 'new-token' }),
-    register: jest.fn().mockResolvedValue(mockUser),
-    logout: jest.fn().mockResolvedValue({ message: 'Logged out successfully' }),
-    forgotPassword: jest.fn().mockResolvedValue({ message: 'Password reset email sent', reset_token: 'reset-token' }),
-    resetPassword: jest.fn().mockResolvedValue({ message: 'Password reset successfully' }),
-    changePassword: jest.fn().mockResolvedValue({ message: 'Password changed successfully' }),
-    getProfile: jest.fn().mockResolvedValue({
-      id: 1,
-      username: 'admin',
-      full_name: 'Admin User',
-      email: 'admin@example.com',
-    }),
-    updateProfile: jest.fn().mockResolvedValue({
-      id: 1,
-      username: 'admin',
-      full_name: 'Updated Name',
-      email: 'admin@example.com',
-    }),
-    getActiveSessionCount: jest.fn().mockResolvedValue(1),
-    cleanupExpiredSessions: jest.fn().mockResolvedValue({ message: 'Sessions cleaned up' }),
-    trackFailedLogin: jest.fn(),
-    clearFailedLogins: jest.fn(),
-  };
+  let authService: jest.Mocked<AuthService>;
 
   beforeEach(async () => {
+    const mockService = createMockAuthService();
     const module: TestingModule = await Test.createTestingModule({
       controllers: [AuthController],
       providers: [
         {
           provide: AuthService,
-          useValue: mockAuthService,
+          useValue: mockService,
         },
       ],
     }).compile();
 
     controller = module.get<AuthController>(AuthController);
-    authService = module.get<AuthService>(AuthService);
+    authService = module.get(AuthService);
   });
 
   it('should be defined', () => {
@@ -66,26 +29,35 @@ describe('AuthController', () => {
 
   it('should login and return success response', async () => {
     const body = { username: 'admin', password: 'admin123' };
+    const req = { headers: { 'x-tz': 'Asia/Jakarta' } } as any;
+    const ipAddress = '192.168.1.1';
 
-    const result = await controller.login(body);
+    const result = await controller.login(body, req, ipAddress);
     expect(authService.validateUser).toHaveBeenCalledWith(body.username, body.password);
     expect(authService.login).toHaveBeenCalledWith(mockUser);
+    expect(authService.clearFailedLogins).toHaveBeenCalledWith(body.username);
     expect(result).toMatchObject({
       data: mockJwt,
       message: 'Login successfully!',
       statusCode: 200,
-      trxId: expect.any(String),
+      timestamp: expect.any(String),
+      timezone: {
+        offsetZone: 'ASIA/JAKARTA',
+        timeLocal: expect.any(String),
+      },
     });
   });
 
   it('should handle error in login and track failed login', async () => {
     const body = { username: 'admin', password: 'wrongpassword' };
+    const req = { headers: {} } as any;
+    const ipAddress = '192.168.1.1';
     const error = new Error('Invalid credentials');
 
     jest.spyOn(authService, 'validateUser').mockRejectedValue(error);
 
-    await expect(controller.login(body)).rejects.toThrow('Invalid credentials');
-    expect(authService.trackFailedLogin).toHaveBeenCalledWith(body.username, undefined);
+    await expect(controller.login(body, req, ipAddress)).rejects.toThrow('Invalid credentials');
+    expect(authService.trackFailedLogin).toHaveBeenCalledWith(body.username, ipAddress);
   });
 
   it('should refresh token and return success response', async () => {
@@ -97,7 +69,7 @@ describe('AuthController', () => {
       data: { access_token: 'new-token' },
       message: 'Token refreshed successfully!',
       statusCode: 200,
-      trxId: expect.any(String),
+      timestamp: expect.any(String),
     });
   });
 
@@ -116,7 +88,7 @@ describe('AuthController', () => {
       data: mockUser,
       message: 'User registered successfully!',
       statusCode: 200,
-      trxId: expect.any(String),
+      timestamp: expect.any(String),
     });
   });
 
@@ -130,7 +102,7 @@ describe('AuthController', () => {
       data: { message: 'Logged out successfully' },
       message: 'Logout successfully!',
       statusCode: 200,
-      trxId: expect.any(String),
+      timestamp: expect.any(String),
     });
   });
 
@@ -143,7 +115,7 @@ describe('AuthController', () => {
       data: { message: 'Password reset email sent', reset_token: 'reset-token' },
       message: 'Password reset instructions sent to email!',
       statusCode: 200,
-      trxId: expect.any(String),
+      timestamp: expect.any(String),
     });
   });
 
@@ -159,7 +131,7 @@ describe('AuthController', () => {
       data: { message: 'Password reset successfully' },
       message: 'Password reset successfully!',
       statusCode: 200,
-      trxId: expect.any(String),
+      timestamp: expect.any(String),
     });
   });
 
@@ -169,12 +141,6 @@ describe('AuthController', () => {
       new_password: 'newpassword123',
     };
     const req = { user: { sub: 1 } };
-    const changePasswordSpy = jest.spyOn(controller, 'changePassword');
-    changePasswordSpy.mockImplementation(async (req, body) => {
-      const userId = req.user.sub;
-      const result = await authService.changePassword(userId, body);
-      return successResponse(result, 'Password changed successfully!');
-    });
 
     const result = await controller.changePassword(req as any, body);
     expect(authService.changePassword).toHaveBeenCalledWith(1, body);
@@ -182,52 +148,16 @@ describe('AuthController', () => {
       data: { message: 'Password changed successfully' },
       message: 'Password changed successfully!',
       statusCode: 200,
-      trxId: expect.any(String),
-    });
-
-    changePasswordSpy.mockRestore();
-  });
-
-  it('should handle changePassword with proper req.user.sub extraction', async () => {
-    const body = { current_password: 'oldpass', new_password: 'newpass' };
-    const req = { user: { sub: 123 } };
-    const changePasswordSpy = jest.spyOn(controller, 'changePassword');
-    changePasswordSpy.mockImplementation(async (req, body) => {
-      const userId = req.user.sub;
-      const result = await authService.changePassword(userId, body);
-      return successResponse(result, 'Password changed successfully!');
-    });
-
-    const result = await controller.changePassword(req as any, body);
-    expect(authService.changePassword).toHaveBeenCalledWith(123, body);
-    expect(result).toMatchObject({
-      data: { message: 'Password changed successfully' },
-      message: 'Password changed successfully!',
-      statusCode: 200,
-      trxId: expect.any(String),
-    });
-
-    changePasswordSpy.mockRestore();
-  });
-
-  it('should handle changePassword with direct method call', async () => {
-    const body = { current_password: 'oldpass', new_password: 'newpass' };
-    const req = { user: { sub: 456 } };
-    const result = await controller.changePassword(req as any, body);
-    expect(authService.changePassword).toHaveBeenCalledWith(456, body);
-    expect(result).toMatchObject({
-      data: { message: 'Password changed successfully' },
-      message: 'Password changed successfully!',
-      statusCode: 200,
-      trxId: expect.any(String),
+      timestamp: expect.any(String),
     });
   });
 
   it('should get profile and return success response', async () => {
-    const req = { user: { sub: 1 } };
+    const req = { user: { sub: 1 } } as any;
+    const tz = 'Asia/Jakarta';
 
-    const result = await controller.getProfile(req);
-    expect(authService.getProfile).toHaveBeenCalledWith(1);
+    const result = await controller.getProfile(req, tz);
+    expect(authService.getProfile).toHaveBeenCalledWith(1, tz);
     expect(result).toMatchObject({
       data: {
         id: 1,
@@ -237,19 +167,35 @@ describe('AuthController', () => {
       },
       message: 'Profile retrieved successfully!',
       statusCode: 200,
-      trxId: expect.any(String),
+      timestamp: expect.any(String),
+      timezone: {
+        offsetZone: 'ASIA/JAKARTA',
+        timeLocal: expect.any(String),
+      },
+    });
+  });
+
+  it('should get profile without timezone and return success response', async () => {
+    const req = { user: { sub: 1 } } as any;
+
+    const result = await controller.getProfile(req);
+    expect(authService.getProfile).toHaveBeenCalledWith(1, undefined);
+    expect(result).toMatchObject({
+      data: {
+        id: 1,
+        username: 'admin',
+        full_name: 'Admin User',
+        email: 'admin@example.com',
+      },
+      message: 'Profile retrieved successfully!',
+      statusCode: 200,
+      timestamp: expect.any(String),
     });
   });
 
   it('should update profile and return success response', async () => {
     const body = { full_name: 'Updated Name' };
     const req = { user: { sub: 1 } };
-    const updateProfileSpy = jest.spyOn(controller, 'updateProfile');
-    updateProfileSpy.mockImplementation(async (req, body) => {
-      const userId = req.user.sub;
-      const user = await authService.updateProfile(userId, body);
-      return successResponse(user, 'Profile updated successfully!');
-    });
 
     const result = await controller.updateProfile(req as any, body);
     expect(authService.updateProfile).toHaveBeenCalledWith(1, body);
@@ -262,55 +208,7 @@ describe('AuthController', () => {
       },
       message: 'Profile updated successfully!',
       statusCode: 200,
-      trxId: expect.any(String),
-    });
-
-    updateProfileSpy.mockRestore();
-  });
-
-  it('should handle updateProfile with proper req.user.sub extraction', async () => {
-    const body = { full_name: 'Updated Name' };
-    const req = { user: { sub: 456 } };
-    const updateProfileSpy = jest.spyOn(controller, 'updateProfile');
-    updateProfileSpy.mockImplementation(async (req, body) => {
-      const userId = req.user.sub;
-      const user = await authService.updateProfile(userId, body);
-      return successResponse(user, 'Profile updated successfully!');
-    });
-
-    const result = await controller.updateProfile(req as any, body);
-    expect(authService.updateProfile).toHaveBeenCalledWith(456, body);
-    expect(result).toMatchObject({
-      data: {
-        id: 1,
-        username: 'admin',
-        full_name: 'Updated Name',
-        email: 'admin@example.com',
-      },
-      message: 'Profile updated successfully!',
-      statusCode: 200,
-      trxId: expect.any(String),
-    });
-
-    updateProfileSpy.mockRestore();
-  });
-
-  it('should handle updateProfile with direct method call', async () => {
-    const body = { full_name: 'Updated Name' };
-    const req = { user: { sub: 789 } };
-
-    const result = await controller.updateProfile(req as any, body);
-    expect(authService.updateProfile).toHaveBeenCalledWith(789, body);
-    expect(result).toMatchObject({
-      data: {
-        id: 1,
-        username: 'admin',
-        full_name: 'Updated Name',
-        email: 'admin@example.com',
-      },
-      message: 'Profile updated successfully!',
-      statusCode: 200,
-      trxId: expect.any(String),
+      timestamp: expect.any(String),
     });
   });
 
@@ -327,7 +225,7 @@ describe('AuthController', () => {
       },
       message: 'Session info retrieved successfully!',
       statusCode: 200,
-      trxId: expect.any(String),
+      timestamp: expect.any(String),
     });
   });
 
@@ -338,7 +236,7 @@ describe('AuthController', () => {
       data: { message: 'Expired sessions cleaned up' },
       message: 'Sessions cleaned up successfully!',
       statusCode: 200,
-      trxId: expect.any(String),
+      timestamp: expect.any(String),
     });
   });
 });

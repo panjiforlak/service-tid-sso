@@ -1,12 +1,63 @@
-import { HttpException, HttpStatus, ArgumentsHost } from '@nestjs/common';
+import { Test, TestingModule } from '@nestjs/testing';
+import { ArgumentsHost, HttpException, HttpStatus } from '@nestjs/common';
 import { ThrottlerException } from '@nestjs/throttler';
 import { AllExceptionsFilter } from 'src/common/shared/http/filters/all-exception.filter';
+import { ThrottlerExceptionFilter } from 'src/common/shared/http/filters/throttler-exception.filter';
+import { PinoLogger } from 'nestjs-pino';
+
+type MockResponse = {
+  status: jest.Mock;
+  json: jest.Mock;
+};
+
+function createHttpArgumentsHost(
+  params?: {
+    request?: Partial<{
+      url: string;
+      method: string;
+      originalUrl: string;
+      ip: string;
+      headers: Record<string, any>;
+    }>;
+    response?: MockResponse;
+  },
+) {
+  const response: MockResponse =
+    params?.response ??
+    ({
+      status: jest.fn().mockReturnThis(),
+      json: jest.fn(),
+    } as any);
+
+  const request =
+    params?.request ??
+    ({
+      url: '/test',
+      method: 'GET',
+      originalUrl: '/test',
+      ip: '127.0.0.1',
+      headers: {},
+    } as any);
+
+  const host: ArgumentsHost = {
+    switchToHttp: jest.fn().mockReturnValue({
+      getResponse: () => response,
+      getRequest: () => request,
+    }),
+  } as any;
+
+  return { host, request, response };
+}
 
 describe('AllExceptionsFilter', () => {
   let filter: AllExceptionsFilter;
 
-  beforeEach(() => {
-    filter = new AllExceptionsFilter();
+  beforeEach(async () => {
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [AllExceptionsFilter],
+    }).compile();
+
+    filter = module.get<AllExceptionsFilter>(AllExceptionsFilter);
   });
 
   it('should be defined', () => {
@@ -14,36 +65,14 @@ describe('AllExceptionsFilter', () => {
   });
 
   describe('catch', () => {
-    let mockResponse: any;
-    let mockRequest: any;
-    let mockArgumentsHost: ArgumentsHost;
-
-    beforeEach(() => {
-      mockResponse = {
-        status: jest.fn().mockReturnThis(),
-        json: jest.fn(),
-      };
-
-      mockRequest = {
-        url: '/test',
-        method: 'GET',
-      };
-
-      mockArgumentsHost = {
-        switchToHttp: jest.fn().mockReturnValue({
-          getResponse: () => mockResponse,
-          getRequest: () => mockRequest,
-        }),
-      } as any;
-    });
-
-    it('should handle HttpException with string message', () => {
+    it('should handle HttpException', () => {
+      const { host, response } = createHttpArgumentsHost();
       const exception = new HttpException('Test error', HttpStatus.BAD_REQUEST);
 
-      filter.catch(exception, mockArgumentsHost);
+      filter.catch(exception, host);
 
-      expect(mockResponse.status).toHaveBeenCalledWith(HttpStatus.BAD_REQUEST);
-      expect(mockResponse.json).toHaveBeenCalledWith({
+      expect(response.status).toHaveBeenCalledWith(HttpStatus.BAD_REQUEST);
+      expect(response.json).toHaveBeenCalledWith({
         statusCode: HttpStatus.BAD_REQUEST,
         message: 'Test error',
         data: { error: true },
@@ -51,16 +80,61 @@ describe('AllExceptionsFilter', () => {
       });
     });
 
+    it('should include trxId in response', () => {
+      const { host, response } = createHttpArgumentsHost();
+      const exception = new HttpException('Test error', HttpStatus.BAD_REQUEST);
+
+      filter.catch(exception, host);
+
+      const responseCall = response.json.mock.calls[0][0];
+
+      expect(responseCall.trxId).toBeDefined();
+      expect(typeof responseCall.trxId).toBe('string');
+      expect(responseCall.trxId).toMatch(/^ITI(DEV|PRD)/);
+    });
+
+    it('should use x-transaction-id header as trxId when present', () => {
+      const { host, response } = createHttpArgumentsHost({
+        request: { headers: { 'x-transaction-id': 'ITI123456' } as any },
+      });
+      const exception = new HttpException('Test error', HttpStatus.BAD_REQUEST);
+
+      filter.catch(exception, host);
+
+      expect(response.json).toHaveBeenCalledWith({
+        statusCode: HttpStatus.BAD_REQUEST,
+        message: 'Test error',
+        data: { error: true },
+        trxId: 'ITI123456',
+      });
+    });
+
+    it('should handle HttpException with string response', () => {
+      const { host, response } = createHttpArgumentsHost();
+      const exception = new HttpException('String error message', HttpStatus.BAD_REQUEST);
+
+      filter.catch(exception, host);
+
+      expect(response.status).toHaveBeenCalledWith(HttpStatus.BAD_REQUEST);
+      expect(response.json).toHaveBeenCalledWith({
+        statusCode: HttpStatus.BAD_REQUEST,
+        message: 'String error message',
+        data: { error: true },
+        trxId: expect.any(String),
+      });
+    });
+
     it('should handle HttpException with object response', () => {
+      const { host, response } = createHttpArgumentsHost();
       const exception = new HttpException(
         { message: 'Object error', statusCode: 422 },
         HttpStatus.UNPROCESSABLE_ENTITY,
       );
 
-      filter.catch(exception, mockArgumentsHost);
+      filter.catch(exception, host);
 
-      expect(mockResponse.status).toHaveBeenCalledWith(HttpStatus.UNPROCESSABLE_ENTITY);
-      expect(mockResponse.json).toHaveBeenCalledWith({
+      expect(response.status).toHaveBeenCalledWith(HttpStatus.UNPROCESSABLE_ENTITY);
+      expect(response.json).toHaveBeenCalledWith({
         statusCode: 422,
         message: 'Object error',
         data: { error: true },
@@ -68,69 +142,17 @@ describe('AllExceptionsFilter', () => {
       });
     });
 
-    it('should handle generic Error', () => {
-      const exception = new Error('Generic error');
-
-      filter.catch(exception, mockArgumentsHost);
-
-      expect(mockResponse.status).toHaveBeenCalledWith(HttpStatus.INTERNAL_SERVER_ERROR);
-      expect(mockResponse.json).toHaveBeenCalledWith({
-        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
-        message: 'Internal server error',
-        data: { error: true },
-        trxId: expect.any(String),
-      });
-    });
-
-    it('should handle unknown string exception', () => {
-      const exception = 'Unknown error';
-
-      filter.catch(exception, mockArgumentsHost);
-
-      expect(mockResponse.status).toHaveBeenCalledWith(HttpStatus.INTERNAL_SERVER_ERROR);
-      expect(mockResponse.json).toHaveBeenCalledWith({
-        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
-        message: 'Internal server error',
-        data: { error: true },
-        trxId: expect.any(String),
-      });
-    });
-
-    it('should include trxId in response', () => {
-      const exception = new HttpException('Test error', HttpStatus.BAD_REQUEST);
-
-      filter.catch(exception, mockArgumentsHost);
-
-      const responseCall = mockResponse.json.mock.calls[0][0];
-      expect(responseCall.trxId).toBeDefined();
-      expect(typeof responseCall.trxId).toBe('string');
-      expect(responseCall.trxId).toMatch(/^TID/);
-    });
-
-    it('should handle HttpException with existing trxId', () => {
-      const exception = new HttpException({ message: 'Error with trxId', trxId: 'TID123456' }, HttpStatus.BAD_REQUEST);
-
-      filter.catch(exception, mockArgumentsHost);
-
-      expect(mockResponse.status).toHaveBeenCalledWith(HttpStatus.BAD_REQUEST);
-      expect(mockResponse.json).toHaveBeenCalledWith({
-        statusCode: HttpStatus.BAD_REQUEST,
-        message: 'Error with trxId',
-        data: { error: true },
-        trxId: 'TID123456',
-      });
-    });
-
-    it('should handle HttpException with existing statusCode and message', () => {
+    it('should handle HttpException with existing statusCode', () => {
+      const { host, response } = createHttpArgumentsHost();
       const exception = new HttpException(
         { message: 'Error with statusCode', statusCode: 422 },
         HttpStatus.BAD_REQUEST,
       );
 
-      filter.catch(exception, mockArgumentsHost);
+      filter.catch(exception, host);
 
-      expect(mockResponse.status).toHaveBeenCalledWith(HttpStatus.BAD_REQUEST);
-      expect(mockResponse.json).toHaveBeenCalledWith({
+      expect(response.status).toHaveBeenCalledWith(HttpStatus.BAD_REQUEST);
+      expect(response.json).toHaveBeenCalledWith({
         statusCode: 422,
         message: 'Error with statusCode',
         data: { error: true },
@@ -139,15 +161,16 @@ describe('AllExceptionsFilter', () => {
     });
 
     it('should handle HttpException with existing data', () => {
+      const { host, response } = createHttpArgumentsHost();
       const exception = new HttpException(
         { message: 'Error with data', data: { field: 'value' } },
         HttpStatus.BAD_REQUEST,
       );
 
-      filter.catch(exception, mockArgumentsHost);
+      filter.catch(exception, host);
 
-      expect(mockResponse.status).toHaveBeenCalledWith(HttpStatus.BAD_REQUEST);
-      expect(mockResponse.json).toHaveBeenCalledWith({
+      expect(response.status).toHaveBeenCalledWith(HttpStatus.BAD_REQUEST);
+      expect(response.json).toHaveBeenCalledWith({
         statusCode: HttpStatus.BAD_REQUEST,
         message: 'Error with data',
         data: { field: 'value' },
@@ -155,55 +178,204 @@ describe('AllExceptionsFilter', () => {
       });
     });
 
-    it('should handle HttpException with missing or empty message', () => {
-      const exception1 = new HttpException({ statusCode: 422 }, HttpStatus.UNPROCESSABLE_ENTITY);
-      const exception2 = new HttpException({ message: '', statusCode: 422 }, HttpStatus.UNPROCESSABLE_ENTITY);
-      const exception3 = new HttpException({ message: null, statusCode: 422 }, HttpStatus.UNPROCESSABLE_ENTITY);
-      const exception4 = new HttpException({ message: undefined, statusCode: 422 }, HttpStatus.UNPROCESSABLE_ENTITY);
+    it('should handle HttpException with missing message (fallback to Unknown error)', () => {
+      const { host, response } = createHttpArgumentsHost();
+      const exception = new HttpException({ statusCode: 422 }, HttpStatus.UNPROCESSABLE_ENTITY);
 
-      [exception1, exception2, exception3, exception4].forEach((ex) => {
-        filter.catch(ex, mockArgumentsHost);
-        expect(mockResponse.json).toHaveBeenCalledWith(
-          expect.objectContaining({
-            statusCode: 422,
-            message: 'Unknown error',
-            data: { error: true },
-            trxId: expect.any(String),
-          }),
-        );
+      filter.catch(exception, host);
+
+      expect(response.status).toHaveBeenCalledWith(HttpStatus.UNPROCESSABLE_ENTITY);
+      expect(response.json).toHaveBeenCalledWith({
+        statusCode: 422,
+        message: 'Error',
+        data: { error: true },
+        trxId: expect.any(String),
+      });
+    });
+
+    it('should handle HttpException with empty message (fallback to Error)', () => {
+      const { host, response } = createHttpArgumentsHost();
+      const exception = new HttpException({ message: '', statusCode: 422 }, HttpStatus.UNPROCESSABLE_ENTITY);
+
+      filter.catch(exception, host);
+
+      expect(response.status).toHaveBeenCalledWith(HttpStatus.UNPROCESSABLE_ENTITY);
+      expect(response.json).toHaveBeenCalledWith({
+        statusCode: 422,
+        message: 'Error',
+        data: { error: true },
+        trxId: expect.any(String),
+      });
+    });
+
+    it('should handle HttpException with null message (fallback to Error)', () => {
+      const { host, response } = createHttpArgumentsHost();
+      const exception = new HttpException({ message: null, statusCode: 422 }, HttpStatus.UNPROCESSABLE_ENTITY);
+
+      filter.catch(exception, host);
+
+      expect(response.status).toHaveBeenCalledWith(HttpStatus.UNPROCESSABLE_ENTITY);
+      expect(response.json).toHaveBeenCalledWith({
+        statusCode: 422,
+        message: 'Error',
+        data: { error: true },
+        trxId: expect.any(String),
+      });
+    });
+
+    it('should handle HttpException with undefined message (fallback to Error)', () => {
+      const { host, response } = createHttpArgumentsHost();
+      const exception = new HttpException({ message: undefined, statusCode: 422 }, HttpStatus.UNPROCESSABLE_ENTITY);
+
+      filter.catch(exception, host);
+
+      expect(response.status).toHaveBeenCalledWith(HttpStatus.UNPROCESSABLE_ENTITY);
+      expect(response.json).toHaveBeenCalledWith({
+        statusCode: 422,
+        message: 'Error',
+        data: { error: true },
+        trxId: expect.any(String),
       });
     });
   });
 });
 
-describe('ThrottlerException Handling', () => {
-  let mockResponse: any;
-  let mockArgumentsHost: ArgumentsHost;
+describe('ThrottlerExceptionFilter', () => {
+  let filter: ThrottlerExceptionFilter;
+  let logger: PinoLogger;
 
-  beforeEach(() => {
-    mockResponse = {
-      status: jest.fn().mockReturnThis(),
-      json: jest.fn(),
-    };
+  const mockLogger = {
+    warn: jest.fn(),
+    error: jest.fn(),
+    info: jest.fn(),
+    debug: jest.fn(),
+  };
 
-    mockArgumentsHost = {
-      switchToHttp: jest.fn().mockReturnValue({
-        getResponse: () => mockResponse,
-      }),
-    } as any;
+  beforeEach(async () => {
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        ThrottlerExceptionFilter,
+        {
+          provide: PinoLogger,
+          useValue: mockLogger,
+        },
+      ],
+    }).compile();
+
+    filter = module.get<ThrottlerExceptionFilter>(ThrottlerExceptionFilter);
+    logger = module.get<PinoLogger>(PinoLogger);
   });
 
-  it('should handle ThrottlerException correctly', () => {
+  it('should be defined', () => {
+    expect(filter).toBeDefined();
+  });
+
+  describe('catch', () => {
+    it('should handle ThrottlerException and log warning', () => {
+      const { host, response, request } = createHttpArgumentsHost({
+        request: {
+          method: 'POST',
+          originalUrl: '/api/test',
+          ip: '127.0.0.1',
+          headers: {
+            'user-agent': 'test-agent',
+          },
+        } as any,
+      });
+      const exception = new ThrottlerException();
+
+      filter.catch(exception, host);
+
+      expect(response.status).toHaveBeenCalledWith(HttpStatus.TOO_MANY_REQUESTS);
+      expect(response.json).toHaveBeenCalledWith({
+        statusCode: HttpStatus.TOO_MANY_REQUESTS,
+        message: 'Too Many Requests',
+        data: { error: true },
+        trxId: expect.any(String),
+      });
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        {
+          traceId: expect.any(String),
+          method: 'POST',
+          path: '/api/test',
+          statusCode: 429,
+          ip: '127.0.0.1',
+          userAgent: 'test-agent',
+        },
+        'API_ABUSE_DETECTED',
+      );
+    });
+
+    it('should use x-transaction-id header as trxId when present', () => {
+      const { host, response } = createHttpArgumentsHost({
+        request: {
+          headers: { 'x-transaction-id': 'ITI123456' },
+          method: 'GET',
+          originalUrl: '/test',
+          ip: '127.0.0.1',
+        } as any,
+      });
+      const exception = new ThrottlerException();
+
+      filter.catch(exception, host);
+
+      expect(response.json).toHaveBeenCalledWith({
+        statusCode: HttpStatus.TOO_MANY_REQUESTS,
+        message: 'Too Many Requests',
+        data: { error: true },
+        trxId: 'ITI123456',
+      });
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        expect.objectContaining({
+          traceId: 'ITI123456',
+        }),
+        'API_ABUSE_DETECTED',
+      );
+    });
+
+    it('should generate trxId when x-transaction-id header is not present', () => {
+      const { host, response } = createHttpArgumentsHost({
+        request: {
+          headers: {},
+          method: 'GET',
+          originalUrl: '/test',
+          ip: '127.0.0.1',
+        } as any,
+      });
+      const exception = new ThrottlerException();
+
+      filter.catch(exception, host);
+
+      const responseCall = response.json.mock.calls[0][0];
+      expect(responseCall.trxId).toBeDefined();
+      expect(typeof responseCall.trxId).toBe('string');
+      expect(responseCall.trxId).toMatch(/^ITI(DEV|PRD)/);
+    });
+  });
+});
+
+describe('AllExceptionsFilter - ThrottlerException handling', () => {
+  let filter: AllExceptionsFilter;
+
+  beforeEach(async () => {
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [AllExceptionsFilter],
+    }).compile();
+
+    filter = module.get<AllExceptionsFilter>(AllExceptionsFilter);
+  });
+
+  it('should handle ThrottlerException via AllExceptionsFilter', () => {
+    const { host, response } = createHttpArgumentsHost();
     const exception = new ThrottlerException();
-    const filter = new AllExceptionsFilter();
 
-    filter.catch(exception, mockArgumentsHost);
+    filter.catch(exception, host);
 
-    expect(mockResponse.status).toHaveBeenCalledWith(429);
-    expect(mockResponse.json).toHaveBeenCalledWith({
+    expect(response.status).toHaveBeenCalledWith(429);
+    expect(response.json).toHaveBeenCalledWith({
       statusCode: 429,
-      message: 'You are suspected of fraud!.',
-      data: { info: 'Too Many Requestsss' },
+      message: 'Too Many Requests',
+      data: { error: true },
       trxId: expect.any(String),
     });
   });

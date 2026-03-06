@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import 'dotenv/config';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 
@@ -11,6 +12,7 @@ import { LoggerInterceptor } from './common/shared/http/interceptors/logger.inte
 import { CustomThrottlerGuard } from './common/guard/custom-throttler.guard';
 import { ThrottlerExceptionFilter } from './common/shared/http/filters/throttler-exception.filter';
 import { AllExceptionsFilter } from './common/shared/http/filters/all-exception.filter';
+
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),

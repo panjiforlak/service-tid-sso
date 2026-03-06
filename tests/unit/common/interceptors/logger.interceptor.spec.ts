@@ -1,18 +1,33 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { LoggerInterceptor } from 'src/common/interceptors/logger.interceptor';
-import { CallHandler, ExecutionContext } from '@nestjs/common';
+import { LoggerInterceptor } from 'src/common/shared/http/interceptors/logger.interceptor';
+import { CallHandler, ExecutionContext, HttpException, HttpStatus } from '@nestjs/common';
 import { of, throwError } from 'rxjs';
 import { switchMap } from 'rxjs/operators';
-import { HttpException, HttpStatus } from '@nestjs/common';
+import { PinoLogger } from 'nestjs-pino';
 describe('LoggerInterceptor', () => {
   let interceptor: LoggerInterceptor;
+  let logger: PinoLogger;
+
+  const mockLogger = {
+    info: jest.fn(),
+    error: jest.fn(),
+    debug: jest.fn(),
+    warn: jest.fn(),
+  };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [LoggerInterceptor],
+      providers: [
+        LoggerInterceptor,
+        {
+          provide: PinoLogger,
+          useValue: mockLogger,
+        },
+      ],
     }).compile();
 
     interceptor = module.get<LoggerInterceptor>(LoggerInterceptor);
+    logger = module.get<PinoLogger>(PinoLogger);
   });
 
   it('should be defined', () => {
@@ -29,8 +44,13 @@ describe('LoggerInterceptor', () => {
           getRequest: () => ({
             method: 'GET',
             url: '/test',
+            originalUrl: '/test',
             ip: '192.168.1.1',
             headers: { 'user-agent': 'test-agent' },
+            body: {},
+            query: {},
+            params: {},
+            id: 'req-id-123',
           }),
           getResponse: () => ({
             statusCode: 200,
@@ -48,41 +68,80 @@ describe('LoggerInterceptor', () => {
       mockCallHandler = {
         handle: jest.fn().mockReturnValue(of({ data: 'test' })),
       };
+
+      // Reset mocks
+      jest.clearAllMocks();
     });
 
-    it('should log request and response', async () => {
-      const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
-
+    it('should log request and response successfully', async () => {
       await new Promise((resolve, reject) => {
         interceptor.intercept(mockExecutionContext, mockCallHandler).subscribe({
           next: (value) => {
             expect(value).toEqual({ data: 'test' });
-            consoleSpy.mockRestore();
+            expect(mockLogger.info).toHaveBeenCalledWith(
+              expect.objectContaining({
+                traceId: expect.any(String),
+                method: 'GET',
+                path: '/test',
+                statusCode: 200,
+                responseTime: expect.stringMatching(/\d+ms/),
+              }),
+              'REQUEST_SUCCESS',
+            );
             resolve(value);
           },
           error: (error) => {
-            consoleSpy.mockRestore();
             reject(new Error(error));
           },
         });
       });
     });
 
-    it('should handle errors in logging gracefully', async () => {
-      const consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {
-        throw new Error('Logging error');
-      });
+    it('should use x-transaction-id header as traceId when present', async () => {
+      const contextWithTrxId = {
+        ...mockExecutionContext,
+        switchToHttp: jest.fn().mockReturnValue({
+          getRequest: () => ({
+            method: 'GET',
+            url: '/test',
+            originalUrl: '/test',
+            headers: { 'x-transaction-id': 'ITI123456' },
+            body: {},
+            query: {},
+            params: {},
+          }),
+          getResponse: () => ({
+            statusCode: 200,
+          }),
+        }),
+      } as any;
 
-      await new Promise((resolve, reject) => {
-        interceptor.intercept(mockExecutionContext, mockCallHandler).subscribe({
-          next: (value) => {
-            expect(value).toEqual({ data: 'test' });
-            consoleSpy.mockRestore();
-            resolve(value);
+      await new Promise((resolve) => {
+        interceptor.intercept(contextWithTrxId, mockCallHandler).subscribe({
+          next: () => {
+            expect(mockLogger.info).toHaveBeenCalledWith(
+              expect.objectContaining({
+                traceId: 'ITI123456',
+              }),
+              'REQUEST_SUCCESS',
+            );
+            resolve(undefined);
           },
-          error: (error) => {
-            consoleSpy.mockRestore();
-            reject(new Error(error));
+        });
+      });
+    });
+
+    it('should use req.id as traceId when x-transaction-id is not present', async () => {
+      await new Promise((resolve) => {
+        interceptor.intercept(mockExecutionContext, mockCallHandler).subscribe({
+          next: () => {
+            expect(mockLogger.info).toHaveBeenCalledWith(
+              expect.objectContaining({
+                traceId: 'req-id-123',
+              }),
+              'REQUEST_SUCCESS',
+            );
+            resolve(undefined);
           },
         });
       });
@@ -105,15 +164,26 @@ describe('LoggerInterceptor', () => {
 
     it('should handle errors from next handler', async () => {
       const error = new Error('Handler error');
-      mockCallHandler.handle = jest.fn().mockReturnValue(of(null).pipe(switchMap(() => throwError(() => error))));
+      mockCallHandler.handle = jest.fn().mockReturnValue(throwError(() => error));
 
-      await new Promise((resolve, reject) => {
+      await new Promise((resolve) => {
         interceptor.intercept(mockExecutionContext, mockCallHandler).subscribe({
-          next: (value) => {
-            reject(new Error('Should not reach here'));
+          next: () => {
+            resolve(undefined);
           },
           error: (err) => {
             expect(err).toBe(error);
+            expect(mockLogger.error).toHaveBeenCalledWith(
+              expect.objectContaining({
+                traceId: expect.any(String),
+                method: 'GET',
+                path: '/test',
+                statusCode: 500,
+                responseTime: expect.stringMatching(/\d+ms/),
+                error: 'Handler error',
+              }),
+              expect.stringMatching(/FILE_NAME:||:FUNCTION_NAME/),
+            );
             resolve(err);
           },
         });
@@ -126,8 +196,12 @@ describe('LoggerInterceptor', () => {
           getRequest: () => ({
             method: 'POST',
             url: '/api/users',
+            originalUrl: '/api/users',
             ip: '192.168.1.2',
             headers: { 'user-agent': 'test-agent-2' },
+            body: {},
+            query: {},
+            params: {},
           }),
           getResponse: () => ({
             statusCode: 201,
@@ -146,6 +220,14 @@ describe('LoggerInterceptor', () => {
         interceptor.intercept(differentContext, mockCallHandler).subscribe({
           next: (value) => {
             expect(value).toEqual({ data: 'test' });
+            expect(mockLogger.info).toHaveBeenCalledWith(
+              expect.objectContaining({
+                method: 'POST',
+                path: '/api/users',
+                statusCode: 201,
+              }),
+              'REQUEST_SUCCESS',
+            );
             resolve(value);
           },
           error: (error) => {
@@ -159,37 +241,49 @@ describe('LoggerInterceptor', () => {
       const originalDebug = process.env.DEBUG;
       process.env.DEBUG = 'yes';
 
-      const debugSpy = jest.spyOn(interceptor['logger'], 'debug').mockImplementation();
-
       mockCallHandler.handle = jest.fn().mockReturnValue(of({ data: 'test response' }));
 
       await interceptor.intercept(mockExecutionContext, mockCallHandler).toPromise();
 
-      expect(debugSpy).toHaveBeenCalledWith(expect.stringContaining('"trx":'));
+      expect(mockLogger.debug).toHaveBeenCalledWith(
+        expect.objectContaining({
+          traceId: expect.any(String),
+          body: expect.any(Object),
+          query: expect.any(Object),
+          params: expect.any(Object),
+        }),
+      );
 
       process.env.DEBUG = originalDebug;
-      debugSpy.mockRestore();
     });
 
-    it('should log debug information on error when DEBUG=yes', async () => {
-      const originalDebug = process.env.DEBUG;
-      process.env.DEBUG = 'yes';
+    it('should not log info for statusCode >= 400', async () => {
+      const contextWithError = {
+        ...mockExecutionContext,
+        switchToHttp: jest.fn().mockReturnValue({
+          getRequest: () => ({
+            method: 'GET',
+            url: '/test',
+            originalUrl: '/test',
+            headers: {},
+            body: {},
+            query: {},
+            params: {},
+          }),
+          getResponse: () => ({
+            statusCode: 404,
+          }),
+        }),
+      } as any;
 
-      const debugSpy = jest.spyOn(interceptor['logger'], 'debug').mockImplementation();
-      const error = new Error('Test error');
-
-      mockCallHandler.handle = jest.fn().mockReturnValue(of(null).pipe(switchMap(() => throwError(() => error))));
-
-      try {
-        await interceptor.intercept(mockExecutionContext, mockCallHandler).toPromise();
-      } catch (err) {
-        // Expected to throw
-      }
-
-      expect(debugSpy).toHaveBeenCalledWith(expect.stringContaining('"error":'));
-
-      process.env.DEBUG = originalDebug;
-      debugSpy.mockRestore();
+      await new Promise((resolve) => {
+        interceptor.intercept(contextWithError, mockCallHandler).subscribe({
+          next: () => {
+            expect(mockLogger.info).not.toHaveBeenCalled();
+            resolve(undefined);
+          },
+        });
+      });
     });
 
     it('should handle response data correctly', async () => {
@@ -213,12 +307,19 @@ describe('LoggerInterceptor', () => {
     });
 
     it('should sanitize password in request body', async () => {
+      const originalDebug = process.env.DEBUG;
+      process.env.DEBUG = 'yes';
+
       const contextWithPassword = {
         switchToHttp: jest.fn().mockReturnValue({
           getRequest: () => ({
             method: 'POST',
             url: '/login',
+            originalUrl: '/login',
+            headers: {},
             body: { username: 'test', password: 'secret123' },
+            query: {},
+            params: {},
           }),
           getResponse: () => ({
             statusCode: 200,
@@ -233,109 +334,103 @@ describe('LoggerInterceptor', () => {
         getType: jest.fn(),
       } as any;
 
-      const logSpy = jest.spyOn(interceptor['logger'], 'log').mockImplementation();
-
       await interceptor.intercept(contextWithPassword, mockCallHandler).toPromise();
 
-      expect(logSpy).toHaveBeenCalled();
-      logSpy.mockRestore();
+      expect(mockLogger.debug).toHaveBeenCalledWith(
+        expect.objectContaining({
+          body: { username: 'test', password: '******' },
+        }),
+      );
+
+      process.env.DEBUG = originalDebug;
     });
 
     it('should handle HttpException errors', async () => {
-      const httpError = new HttpException('Not Found', HttpStatus.NOT_FOUND);
+      const httpError = new HttpException('Not Found', HttpStatus.NOT_FOUND) as any;
+      httpError.source = 'AUTH_SERVICE';
+      httpError.context = 'VALIDATE_USER';
 
-      mockCallHandler.handle = jest.fn().mockReturnValue(of(null).pipe(switchMap(() => throwError(() => httpError))));
+      mockCallHandler.handle = jest.fn().mockReturnValue(throwError(() => httpError));
 
-      const errorSpy = jest.spyOn(interceptor['logger'], 'error').mockImplementation();
-
-      try {
-        await interceptor.intercept(mockExecutionContext, mockCallHandler).toPromise();
-      } catch (err) {
-        // Expected to throw
-      }
-
-      expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('404'));
-
-      errorSpy.mockRestore();
+      await new Promise((resolve) => {
+        interceptor.intercept(mockExecutionContext, mockCallHandler).subscribe({
+          next: () => resolve(undefined),
+          error: () => {
+            expect(mockLogger.error).toHaveBeenCalledWith(
+              expect.objectContaining({
+                statusCode: 404,
+                error: 'Not Found',
+              }),
+              'AUTH_SERVICE:||:VALIDATE_USER',
+            );
+            resolve(undefined);
+          },
+        });
+      });
     });
 
     it('should handle non-HttpException errors', async () => {
       const genericError = new Error('Generic error');
 
-      mockCallHandler.handle = jest
-        .fn()
-        .mockReturnValue(of(null).pipe(switchMap(() => throwError(() => genericError))));
+      mockCallHandler.handle = jest.fn().mockReturnValue(throwError(() => genericError));
 
-      const errorSpy = jest.spyOn(interceptor['logger'], 'error').mockImplementation();
-
-      try {
-        await interceptor.intercept(mockExecutionContext, mockCallHandler).toPromise();
-      } catch (err) {
-        // Expected to throw
-      }
-
-      expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('500'));
-
-      errorSpy.mockRestore();
+      await new Promise((resolve) => {
+        interceptor.intercept(mockExecutionContext, mockCallHandler).subscribe({
+          next: () => resolve(undefined),
+          error: () => {
+            expect(mockLogger.error).toHaveBeenCalledWith(
+              expect.objectContaining({
+                statusCode: 500,
+                error: 'Generic error',
+              }),
+              'FILE_NAME:||:FUNCTION_NAME',
+            );
+            resolve(undefined);
+          },
+        });
+      });
     });
 
-    it('should handle response with statusCode property', async () => {
-      const responseWithStatusCode = {
-        data: 'test',
-        statusCode: 201,
-      };
+    it('should handle HttpException with response object', async () => {
+      const httpError = new HttpException({ message: 'Error message', statusCode: 400 }, HttpStatus.BAD_REQUEST);
 
-      mockCallHandler.handle = jest.fn().mockReturnValue(of(responseWithStatusCode));
+      mockCallHandler.handle = jest.fn().mockReturnValue(throwError(() => httpError));
 
-      const logSpy = jest.spyOn(interceptor['logger'], 'log').mockImplementation();
-
-      await interceptor.intercept(mockExecutionContext, mockCallHandler).toPromise();
-
-      expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('201'));
-
-      logSpy.mockRestore();
+      await new Promise((resolve) => {
+        interceptor.intercept(mockExecutionContext, mockCallHandler).subscribe({
+          next: () => resolve(undefined),
+          error: () => {
+            expect(mockLogger.error).toHaveBeenCalledWith(
+              expect.objectContaining({
+                statusCode: 400,
+                error: 'Error message',
+              }),
+              expect.any(String),
+            );
+            resolve(undefined);
+          },
+        });
+      });
     });
 
-    it('should handle debug logging with response data property', async () => {
-      const originalDebug = process.env.DEBUG;
-      process.env.DEBUG = 'yes';
+    it('should handle error without source and context', async () => {
+      const error = new Error('Error without source');
+      mockCallHandler.handle = jest.fn().mockReturnValue(throwError(() => error));
 
-      const responseWithData = {
-        data: 'test data',
-        statusCode: 200,
-      };
-
-      mockCallHandler.handle = jest.fn().mockReturnValue(of(responseWithData));
-
-      const debugSpy = jest.spyOn(interceptor['logger'], 'debug').mockImplementation();
-
-      await interceptor.intercept(mockExecutionContext, mockCallHandler).toPromise();
-
-      expect(debugSpy).toHaveBeenCalledWith(expect.stringContaining('"response":"test data"'));
-
-      process.env.DEBUG = originalDebug;
-      debugSpy.mockRestore();
-    });
-
-    it('should handle debug logging without response data property', async () => {
-      const originalDebug = process.env.DEBUG;
-      process.env.DEBUG = 'yes';
-
-      const responseWithoutData = {
-        message: 'success',
-        statusCode: 200,
-      };
-
-      mockCallHandler.handle = jest.fn().mockReturnValue(of(responseWithoutData));
-
-      const debugSpy = jest.spyOn(interceptor['logger'], 'debug').mockImplementation();
-
-      await interceptor.intercept(mockExecutionContext, mockCallHandler).toPromise();
-
-      expect(debugSpy).toHaveBeenCalledWith(expect.stringContaining('"response":'));
-
-      process.env.DEBUG = originalDebug;
-      debugSpy.mockRestore();
+      await new Promise((resolve) => {
+        interceptor.intercept(mockExecutionContext, mockCallHandler).subscribe({
+          next: () => resolve(undefined),
+          error: () => {
+            expect(mockLogger.error).toHaveBeenCalledWith(
+              expect.objectContaining({
+                error: 'Error without source',
+              }),
+              'FILE_NAME:||:FUNCTION_NAME',
+            );
+            resolve(undefined);
+          },
+        });
+      });
     });
   });
 });
